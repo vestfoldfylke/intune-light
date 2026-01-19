@@ -1,0 +1,39 @@
+﻿@page "/Error"
+@using System.Diagnostics
+
+
+<PageTitle>Feil</PageTitle>
+
+<h1 class="text-danger">Feil.</h1>
+<h2 class="text-danger">En feil oppstod under behandling av forespørselen din.</h2>
+
+@if (ShowRequestId)
+{
+    <p>
+        <strong>Forespørsels-ID:</strong> <code>@RequestId</code>
+    </p>
+}
+
+<h3>Utviklingsmodus</h3>
+<p>
+    Hvis du bytter til <strong>Development</strong>-miljø, vil du få mer detaljert informasjon
+    om feilen som oppstod.
+</p>
+<p>
+    <strong>Development-miljøet bør ikke brukes i en produksjonssatt applikasjon.</strong>
+    Det kan føre til at sensitiv informasjon fra unntak vises til sluttbrukere.
+    For lokal debugging kan du aktivere <strong>Development</strong>-miljøet ved å sette
+    miljøvariabelen <strong>ASPNETCORE_ENVIRONMENT</strong> til <strong>Development</strong>
+    og starte applikasjonen på nytt.
+</p>
+
+@code
+{
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private string? RequestId { get; set; }
+    private bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
+
+    protected override void OnInitialized() => RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
+}

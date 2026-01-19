@@ -1,0 +1,48 @@
+﻿@page "/"
+
+<PageTitle>Hjem</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-16">
+    <MudStack Justify="Justify.Center" AlignItems="AlignItems.Start" Style="max-width:600px">
+
+        <MudText Typo="Typo.h4" GutterBottom="true">
+            Intune light
+        </MudText>
+        <MudText Class="mb-8" Typo="Typo.subtitle1" Style="max-width:600px">
+            Intune light er et forenklet verktøy for servicedesk som gjør det enkelt å håndtere enheter.
+            Løsningen gir tilgang til nødvendige device‑management funksjoner – og kun det som trengs for
+            daglige oppgaver som sletting, nullstilling og generell administrasjon.
+        </MudText>
+
+        <MudAlert Severity="Severity.Normal" Variant="Variant.Outlined" Class="mb-8" Dense=true>
+            Denne appen er begrenset til trygge og kontrollerte oppgaver for enhetsadministrasjon.
+        </MudAlert>
+
+        <MudDivider Class="my-4" />
+
+        <MudText Typo="Typo.h5" GutterBottom="true">
+            Funksjoner i Intune Light
+        </MudText>
+
+        <MudList T="string" Dense="true">
+            <MudListItem Icon="@Icons.Material.Outlined.Check">
+                Enkelt søk etter enheter
+            </MudListItem>
+            <MudListItem Icon="@Icons.Material.Outlined.Check">
+                Mulighet for administrasjon av enkelt‑enheter
+            </MudListItem>
+            <MudListItem Icon="@Icons.Material.Outlined.Check">
+                Utførelse av vanlige servicedesk-oppgaver med begrensede rettigheter
+            </MudListItem>
+        </MudList>
+
+        <MudDivider Class="my-4" />
+
+        <MudText Typo="Typo.caption">
+            Utviklet for servicedesk – med fokus på enkelhet, sikkerhet og kontroll.
+        </MudText>
+
+    </MudStack>
+</MudContainer>
+
+
