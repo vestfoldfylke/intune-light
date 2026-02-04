@@ -1,0 +1,74 @@
+﻿@using System.Text.Encodings.Web
+@using System.Text.Json
+@using IntuneLight.Infrastructure
+@using IntuneLight.Models.ApiError
+@inject IDialogService DialogService
+
+<MudDialog ContentStyle="max-height:600px;min-width:300px">
+
+    <TitleContent>
+        <MudStack Row>
+            <MudText Typo="Typo.h6">Teknisk feil</MudText>
+            <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Medium" Class="mt-1 ml-2" />
+        </MudStack>
+    </TitleContent>
+
+    <DialogContent>
+
+        <MudStack Spacing="2">
+
+            <MudStack Spacing="1" Class="pa-2">
+                <MudText Typo="Typo.subtitle1">
+                    System: @Error.SystemName
+                </MudText>
+                <MudText Typo="Typo.subtitle1">
+                    Status: @Error.StatusCode @Error.ReasonPhrase
+                </MudText>
+                <MudText Typo="Typo.subtitle1" Style="white-space:wrap;word-break:break-all">
+                    URL: @Error.Url
+                </MudText>
+            </MudStack>
+
+            <MudText Typo="Typo.subtitle2">Respons</MudText>
+
+            <pre class="error-view">
+                @FormattedBody
+            </pre>
+
+        </MudStack>
+
+    </DialogContent>
+
+</MudDialog>
+
+@code
+{
+    [CascadingParameter] private IMudDialogInstance _dialog { get; set; } = default!;
+    [Parameter] public ApiErrorInfo Error { get; set; } = default!;
+
+    // Pretty-prints JSON if possible, otherwise returns raw body text.
+    private string FormattedBody
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(Error?.ResponseBody))
+                return string.Empty;
+
+            try
+            {
+                using var doc = JsonDocument.Parse(Error.ResponseBody);
+                var options = new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                };
+
+                return JsonSerializer.Serialize(doc.RootElement, options);
+            }
+            catch
+            {
+                return Error.ResponseBody;
+            }
+        }
+    }
+}

@@ -1,103 +1,214 @@
-﻿@inherits LayoutComponentBase
+﻿@using IntuneLight.Components.Custom
+@using IntuneLight.Infrastructure
+@using IntuneLight.Models.Options
+@using Microsoft.Extensions.Options
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject IOptions<PureserviceOptions> _psOptions
+@inject IJSRuntime _js
+@inject IHttpContextAccessor HttpContextAccessor
 
-<MudThemeProvider Theme="@_theme" IsDarkMode="_isDarkMode" />
+<MudThemeProvider Theme="@_companyTheme" IsDarkMode="_state.IsDarkMode" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
+
 <MudLayout>
+
     <MudAppBar Elevation="1">
-        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
-        <MudText Typo="Typo.h5" Class="ml-3">Intune light</MudText>
+
+        <MudImage Src="/img/intune-light.png" Height="20"/>
+
+        <MudText Typo="Typo.h6" Class="ml-3" Color="Color.Inherit">
+            <MudStack Row="true" Spacing="1">
+                <b>Intune</b>
+				<p style="font-weight:300">Light</p>
+            </MudStack>
+        </MudText>
+
         <MudSpacer />
+
         <MudIconButton Icon="@(DarkLightModeButtonIcon)" Color="Color.Inherit" OnClick="@DarkModeToggle" />
-        <MudIconButton Icon="@Icons.Material.Filled.MoreVert" Color="Color.Inherit" Edge="Edge.End" />
+
+        <MudMenu Icon="@Icons.Material.Filled.MoreVert" 
+                 Color="Color.Inherit" 
+                 AnchorOrigin="Origin.BottomLeft" 
+                 TransformOrigin="Origin.TopCenter">
+            <MudMenuItem Icon="@Icons.Material.Outlined.ExitToApp">Logg ut</MudMenuItem>
+        </MudMenu>
+
     </MudAppBar>
+
     <MudDrawer id="nav-drawer" @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
         <NavMenu/>
     </MudDrawer>
-    <MudMainContent Class="pt-16 pa-4">
+
+    <MudMainContent>
         @Body
     </MudMainContent>
+
 </MudLayout>
 
+@* Custom error bar component to show fatal errors *@
+<FatalErrorBar />
 
-<div id="blazor-error-ui" data-nosnippet>
-    En uventet feil har oppstått.
-    <a href="." class="reload">Refresh</a>
-    <span class="dismiss">🗙</span>
-</div>
 
-@code {
+@code 
+{
+    #region Parameters
+
     private bool _drawerOpen = true;
-    private bool _isDarkMode = true;
-    private MudTheme? _theme = null;
+
+    #endregion
+
+	#region Initialization
 
     protected override void OnInitialized()
     {
+		// Subscribe to state changes
+        _state.StateChanged += StateHasChanged;
+
+		// Fetch darkmode preference from cookies (server-side rendering)
+        var cookie = HttpContextAccessor.HttpContext?.Request.Cookies["darkMode"];
+        _state.IsDarkMode = cookie == "true";
+
+		// Set pureservice ticket url from options
+        _state.SetPureserviceTicketAddress(_psOptions.Value.TicketAddress);
+        
         base.OnInitialized();
+    }
 
-        _theme = new()
+    #endregion
+
+    #region Company theme
+
+    MudTheme _companyTheme = new()
+    {
+        LayoutProperties = new LayoutProperties
         {
-            PaletteLight = _lightPalette,
-            PaletteDark = _darkPalette,
-            LayoutProperties = new LayoutProperties()
-        };
-    }
+            DefaultBorderRadius = "4px" // 25px - affects all components like cards, fields etc..
+        },
 
-    private void DrawerToggle()
-    {
-        _drawerOpen = !_drawerOpen;
-    }
+        // LIGHT THEME
+        PaletteLight = new PaletteLight
+        {
 
-    private void DarkModeToggle()
-    {
-        _isDarkMode = !_isDarkMode;
-    }
+            // Accent colors (100%)
+            Primary = "#009BC2",                // Himmel 100 %
+            Secondary = "#14828C",              // Fjord 100 %
+            Tertiary = "#5A2E61",               // Plomme 100 %
 
-    private readonly PaletteLight _lightPalette = new()
-    {
-        Black = "#110e2d",
-        AppbarText = "#424242",
-        AppbarBackground = "rgba(255,255,255,0.8)",
-        DrawerBackground = "#ffffff",
-        GrayLight = "#e8e8e8",
-        GrayLighter = "#f9f9f9",
+            // UI/Surface
+            AppbarBackground = "#005260",       // Vann 100 %
+            AppbarText = Colors.Shades.White,
+
+            Background = "#F5F5F5",             // Lys grå bakgrunn
+            Surface = Colors.Shades.White,
+            DrawerBackground = "#E3E6E8",
+            DrawerText = Colors.Gray.Darken3,
+            DrawerIcon = Colors.Gray.Darken2,
+
+            TextPrimary = Colors.Gray.Darken4,
+            TextSecondary = Colors.Gray.Darken1,
+
+            // Status colors (100 %)
+            Success = "#1F9562",                // Gress 100 %
+            Warning = "#BC7726",                // Siv 100 %
+            Error = "#B7173D",                  // Nype 100 %
+            Info = "#1C6C6C",                   // Hav 100 %
+
+            Divider = "#DDDDDD"
+        },
+
+        // DARK THEME
+        PaletteDark = new PaletteDark
+        {
+            // Brand accent colors
+            Primary = "#4CB9D4",                // Himmel 70 %
+            Secondary = "#5AA7AE",              // Fjord 70 %
+            Tertiary = "#8B6D90",               // Plomme 70 %
+
+            // Status colors
+            Success = "#62B591",                // Gress 70 %
+            Warning = "#D0A067",                // Siv 70 %
+            Error = "#CD5D77",                  // Nype 70 %
+            Info = "#609898",                   // Hav 70 %
+
+            // UI-SURFACE-COLORS
+            AppbarBackground = "#1F2528",       // dark blue tone – used as dark "Vann"-equivalent
+            AppbarText = Colors.Shades.White,
+
+            // Surfaces
+            Background = "#1C1F22",             // standard dark bg (Material baseline), litt lysere enn (#121212)
+            Surface = "#262A2E",                // card/panel (Material baseline + mild blue/graphite toning), litt lysere enn (#1E1E20)
+            DrawerBackground = "#1B1E21",       // darker surface for nav/drawer
+
+            // Text
+            TextPrimary = "#E6EBEE",
+            TextSecondary = "#9AA3AA",          // litt mer dempet enn (Colors.Gray.Lighten1)
+
+            // Icons/divider
+            DrawerText = "#C6CCD1",
+            DrawerIcon = "#AEB6BC",
+            Divider = "#343A3F"
+        },
+
+        // TYPOGRAPHY
+        Typography = new Typography
+        {
+            // Global default: Nunito Sans for body text
+            Default = new DefaultTypography() { FontFamily = new[] { "Nunito Sans", "Calibri", "Segoe UI", "Arial", "sans-serif" }},
+
+            // Nunito
+            H1 = new H1Typography { FontFamily = new[] { "Nunito", "Calibri", "Segoe UI", "Arial", "sans-serif" }},
+            H2 = new H2Typography { FontFamily = new[] { "Nunito", "Calibri", "Segoe UI", "Arial", "sans-serif" }},
+            H3 = new H3Typography { FontFamily = new[] { "Nunito", "Calibri", "Segoe UI", "Arial", "sans-serif" }},
+            H4 = new H4Typography { FontFamily = new[] { "Nunito", "Calibri", "Segoe UI", "Arial", "sans-serif" }},
+
+            // Nunito Sans
+            H5 = new H5Typography { FontFamily = new[] { "Nunito Sans", "Calibri", "Segoe UI", "Arial", "sans-serif" } },
+            H6 = new H6Typography { FontFamily = new[] { "Nunito Sans", "Calibri", "Segoe UI", "Arial", "sans-serif" } },
+            Subtitle1 = new Subtitle1Typography { FontFamily = new[] { "Nunito Sans", "Calibri", "Segoe UI", "Arial", "sans-serif" }},
+            Subtitle2 = new Subtitle2Typography { FontFamily = new[] { "Nunito Sans", "Calibri", "Segoe UI", "Arial", "sans-serif" }},
+            Overline = new OverlineTypography   { FontFamily = new[] { "Nunito Sans", "Calibri", "Segoe UI", "Arial", "sans-serif" }},
+            Body1 = new Body1Typography { FontFamily = new[] { "Nunito Sans", "Calibri", "Segoe UI", "Arial", "sans-serif" }},
+            Body2 = new Body2Typography { FontFamily = new[] { "Nunito Sans", "Calibri", "Segoe UI", "Arial", "sans-serif" }},
+            Button = new ButtonTypography { FontFamily = new[] { "Nunito Sans", "Calibri", "Segoe UI", "Arial", "sans-serif" }},
+            Caption = new CaptionTypography { FontFamily = new[] { "Nunito Sans", "Calibri", "Segoe UI", "Arial", "sans-serif" }}
+        }
     };
 
-    private readonly PaletteDark _darkPalette = new()
-    {
-        Primary = "#7e6fff",
-        Surface = "#1e1e2d",
-        Background = "#1a1a27",
-        BackgroundGray = "#151521",
-        AppbarText = "#92929f",
-        AppbarBackground = "rgba(26,26,39,0.8)",
-        DrawerBackground = "#1a1a27",
-        ActionDefault = "#74718e",
-        ActionDisabled = "#9999994d",
-        ActionDisabledBackground = "#605f6d4d",
-        TextPrimary = "#b2b0bf",
-        TextSecondary = "#92929f",
-        TextDisabled = "#ffffff33",
-        DrawerIcon = "#92929f",
-        DrawerText = "#92929f",
-        GrayLight = "#2a2833",
-        GrayLighter = "#1e1e2d",
-        Info = "#4a86ff",
-        Success = "#3dcb6c",
-        Warning = "#ffb545",
-        Error = "#ff3f5f",
-        LinesDefault = "#33323e",
-        TableLines = "#33323e",
-        Divider = "#292838",
-        OverlayLight = "#1e1e2d80",
-    };
+    #endregion
 
-    public string DarkLightModeButtonIcon => _isDarkMode switch
+    #region Events
+
+    private void DrawerToggle() => _drawerOpen = !_drawerOpen;
+    
+    // Toggles dark mode and persists preference in cookie.
+    private async Task DarkModeToggle()
+    {
+        _state.IsDarkMode = !_state.IsDarkMode;
+        await _js.InvokeVoidAsync( "setDarkMode", _state.IsDarkMode );
+    }
+
+    public string DarkLightModeButtonIcon => _state.IsDarkMode switch
     {
         true => Icons.Material.Rounded.AutoMode,
         false => Icons.Material.Outlined.DarkMode,
     };
+
+    #endregion
+
+	#region Dispose
+
+	// Cleanup state change event subscription
+    public void Dispose()
+    {
+		_state.StateChanged -= StateHasChanged;
+	}
+
+    #endregion
+
 }
 
 

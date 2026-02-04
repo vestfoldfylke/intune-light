@@ -1,5 +1,8 @@
 ﻿@using System.Net.Http
 @using System.Net.Http.Json
+@using IntuneLight.Infrastructure
+@using IntuneLight.Services
+@using IntuneLight.Services.State
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components.Routing
 @using Microsoft.AspNetCore.Components.Web
@@ -10,3 +13,19 @@
 @using MudBlazor.Services
 @using IntuneLight
 @using IntuneLight.Components
+
+@* Http services *@
+@inject IIntuneService _intuneService
+@inject IDefenderService _defenderService
+@inject IEntraDirectoryService _entraDirectoryService
+@inject IPureserviceService _pureserviceService
+
+@* Services for MudBlazor *@
+@inject ISnackbar _snackbar
+@inject IDialogService _dialogService
+
+@* Error handlers *@
+@inject IUiErrorHandler _uiErrorHandler
+
+@* State *@
+@inject DeviceLookupState _state

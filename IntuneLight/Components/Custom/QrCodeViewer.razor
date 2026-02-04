@@ -1,0 +1,101 @@
+﻿@using IntuneLight.Infrastructure
+@using QRCoder
+
+<MudStack Spacing="2" Class="@Class" Style="@Style">
+
+    <MudStack Row="false" Justify="Justify.FlexStart" Spacing="2">
+        <MudSwitch T="bool" @bind-Value="_showQr">@SwitchText</MudSwitch>
+    </MudStack>
+
+    @if (_showQr && !string.IsNullOrEmpty(_qrDataUrl))
+    {
+        <img src="@_qrDataUrl" alt="QR-kode" style="max-width:100px; max-height:100px;" />
+
+        @if (!string.IsNullOrWhiteSpace(_statusText))
+        {
+            <MudText Typo="Typo.caption">@_statusText</MudText>
+        }
+    }
+
+</MudStack>
+
+@code
+{
+    [Parameter] public string QrText { get; set; } = string.Empty;
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? Style { get; set; }
+    [Parameter] public string SwitchText { get; set; } = "Vis QR-kode";
+
+    private string _qrDataUrl = string.Empty;
+    private string _statusText = string.Empty;
+    private bool _showQr = false;
+
+    // Regenerates the QR image when the bound text changes.
+    protected override void OnParametersSet()
+    {
+        GenerateFromParam();
+    }
+
+    // Generates the QR image from the current QrText parameter.
+    private void GenerateFromParam()
+    {
+        var raw = QrText ?? string.Empty;
+        var normalized = NormalizeForQr(raw);
+
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            _qrDataUrl = string.Empty;
+            _statusText = "Ingen nøkkel tilgjengelig.";
+            _showQr = false;
+            return;
+        }
+
+        try
+        {
+            using var generator = new QRCodeGenerator();
+            using var data = generator.CreateQrCode(normalized, QRCodeGenerator.ECCLevel.Q);
+
+            var pngQr = new PngByteQRCode(data);
+            var bytes = pngQr.GetGraphic(5);
+
+            _qrDataUrl = "data:image/png;base64," + Convert.ToBase64String(bytes);
+
+            _statusText = LooksLikeBitLocker(raw)
+                ? "Oppdaget BitLocker-nøkkel."
+                : "QR-kode generert.";
+        }
+        catch (Exception ex)
+        {
+            _qrDataUrl = string.Empty;
+            _showQr = false;
+            _statusText = $"Kunne ikke generere QR: {ex.Message}";
+        }
+    }
+
+    // Normalizes input text for QR usage (for example strips formatting from BitLocker keys).
+    private static string NormalizeForQr(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+            return string.Empty;
+
+        var trimmed = raw.Trim();
+
+        if (LooksLikeBitLocker(trimmed))
+        {
+            var digits = new string(trimmed.Where(char.IsDigit).ToArray());
+            return digits;
+        }
+
+        return trimmed;
+    }
+
+    // Detects whether the input looks like a BitLocker recovery key.
+    private static bool LooksLikeBitLocker(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+            return false;
+
+        var digits = new string(raw.Where(char.IsDigit).ToArray());
+        return digits.Length == 48;
+    }
+}

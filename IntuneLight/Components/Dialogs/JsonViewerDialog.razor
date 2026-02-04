@@ -1,0 +1,46 @@
+﻿@using System.Text.Encodings.Web
+@using System.Text.Json
+@using IntuneLight.Infrastructure
+@inject IDialogService DialogService
+
+<MudDialog DefaultFocus="DefaultFocus.None" Style="min-width:400px !important">
+
+    <TitleContent>
+        <MudStack Row>
+            <MudText Typo="Typo.h6">Rådata</MudText>
+            <MudIcon Icon="@Icons.Material.Filled.Code" Size="Size.Medium" Class="mt-1"/>
+        </MudStack>
+    </TitleContent>
+
+    <DialogContent>
+        <pre class="raw-view">
+            @Formatted
+        </pre>
+    </DialogContent>
+
+</MudDialog>
+
+@code
+{
+    [CascadingParameter] IMudDialogInstance _dialog { get; set; } = default!;
+    [Parameter] public string Json { get; set; } = "";
+
+	// Format JSON string with indentation
+    private string Formatted
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(Json))
+                return string.Empty;
+
+            using var doc = JsonDocument.Parse(Json);
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            };
+
+            return JsonSerializer.Serialize(doc.RootElement, options);
+        }
+    }
+}

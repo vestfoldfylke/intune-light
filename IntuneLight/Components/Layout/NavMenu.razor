@@ -1,25 +1,32 @@
-﻿
-<MudNavMenu Class="mt-5">
-    <MudStack Spacing="5">
-        <MudNavLink Href="" Match="NavLinkMatch.All"
-                    Icon="@Icons.Material.Filled.Home">
-            Hjem
-        </MudNavLink>
-        <MudNavLink Href="management/devices" Match="NavLinkMatch.All"
-                    Icon="@Icons.Material.Filled.Computer">
-            Enheter
-        </MudNavLink>
-        <MudNavLink Href="management/bitlocker"
-                    Match="NavLinkMatch.Prefix"
-                    Icon="@Icons.Material.Filled.EnhancedEncryption">
-            Bitlocker
-        </MudNavLink>
-        <MudNavLink Href="management/laps"
-                    Match="NavLinkMatch.Prefix"
-                    Icon="@Icons.Material.Filled.Security">
-            LAPS
-        </MudNavLink>
+﻿@using IntuneLight.Infrastructure
+@implements IDisposable
+
+<MudNavMenu Class="custom-nav-menu">
+
+    <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.FlexStart" Class="ml-5 my-10">
+        <MudBadge Dot Color="Color.Success" Overlap="true">
+            <MudAvatar Color="Color.Dark" Size="Size.Medium">
+                <MudIcon Icon="@Icons.Material.Filled.SupportAgent" />
+            </MudAvatar>
+        </MudBadge>
+        <MudText Typo="Typo.subtitle1">Nils Solberg</MudText>
     </MudStack>
+
+    <MudText Class="version ml-5 mb-5" Typo="Typo.subtitle1">
+        Versjon - @version
+    </MudText>
+
 </MudNavMenu>
 
 
+@code
+{
+	protected override void OnInitialized()
+	{
+		_state.StateChanged += StateHasChanged;
+	}
+
+	private string version = typeof(Program)?.Assembly.GetName()?.Version?.ToString() ?? "ukjent";
+
+    public void Dispose ()=> _state.StateChanged -= StateHasChanged;
+}
