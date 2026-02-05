@@ -286,11 +286,6 @@
                                 <MudImage Width="30" Src="/img/entra.png" ObjectFit="ObjectFit.ScaleDown" />
                                 <MudText Typo="Typo.subtitle1">Entra ID - bruker</MudText>
                                 <MudSpacer />
-                                <MudMenu Icon="@Icons.Material.Outlined.Settings" Class="pa-0" Dense=true AnchorOrigin="Origin.CenterLeft" TransformOrigin="Origin.CenterRight">
-                                    <MudMenuItem Label="Sjekk dust" />
-                                    <MudMenuItem Label="Reset MFA" />
-                                    <MudMenuItem Label="Reset passord" />
-                                </MudMenu>
                             </MudStack>
 
                             <MudDivider Class="mb-3" />
@@ -707,11 +702,6 @@
                                 <MudImage Width="30" Src="@pureserviceIcon" ObjectFit="ObjectFit.ScaleDown" />
                                 <MudText Typo="Typo.subtitle1">Pureservice - bruker</MudText>
                                 <MudSpacer />
-                                <MudMenu Icon="@Icons.Material.Outlined.Settings" Class="pa-0" Dense=true AnchorOrigin="Origin.CenterLeft" TransformOrigin="Origin.CenterRight">
-                                    <MudMenuItem Label="Handling 1" />
-                                    <MudMenuItem Label="Handling 1" />
-                                    <MudMenuItem Label="Handling 1" />
-                                </MudMenu>
                             </MudStack>
                             
                             <MudDivider Class="mb-3" />
@@ -793,11 +783,6 @@
                                 <MudImage Width="30" Src="@pureserviceIcon" ObjectFit="ObjectFit.ScaleDown" />
                                 <MudText Typo="Typo.subtitle1">Pureservice - enhet</MudText>
                                 <MudSpacer />
-                                <MudMenu Icon="@Icons.Material.Outlined.Settings" Class="pa-0" Dense=true AnchorOrigin="Origin.CenterLeft" TransformOrigin="Origin.CenterRight">
-                                    <MudMenuItem Label="Handling 1" />
-                                    <MudMenuItem Label="Handling 1" />
-                                    <MudMenuItem Label="Handling 1" />
-                                </MudMenu>
                             </MudStack>
                             
                             <MudDivider Class="mb-3" />
@@ -879,9 +864,13 @@
                                 <MudText Typo="Typo.subtitle1">Pureservice - sak</MudText>
                                 <MudSpacer />
                                 <MudMenu Icon="@Icons.Material.Outlined.Settings" Class="pa-0" Dense=true AnchorOrigin="Origin.CenterLeft" TransformOrigin="Origin.CenterRight">
-                                    <MudMenuItem Label="Handling 1" />
-                                    <MudMenuItem Label="Handling 1" />
-                                    <MudMenuItem Label="Handling 1" />
+                                    @if(_state.PureserviceTicket is not null)
+                                    {
+                                        <MudMenuItem Label="Åpne i Pureservice" 
+                                                     Href="@(_state.PureserviceTicketAddress + _state.PureserviceTicket.Id)"
+                                                     Target="_blank"
+                                                     Rel="noopener noreferrer" />
+                                    }
                                 </MudMenu>
                             </MudStack>
 
@@ -938,27 +927,13 @@
                     <MudCardActions Class="device-card-actions">
                         @if (!string.IsNullOrWhiteSpace(_state.PureserviceRelationships?.RawJson))
                         {
-                            <MudStack Justify="Justify.SpaceBetween" Row Style="width:100% !important">
-                                <MudButton Size="Size.Small"
-                                           Variant="Variant.Text"
-                                           Color="Color.Secondary"
-                                           EndIcon="@Icons.Material.Outlined.Code"
-                                           OnClick="@(async () => await ShowJsonViewer(_state.PureserviceRelationships.RawJson))">
-                                    Vis rådata
-                                </MudButton>
-
-                                @if(_state.PureserviceTicket != null)
-                                {
-                                    <MudButton Size="Size.Small"
-                                               Variant="Variant.Text"
-                                               Color="Color.Secondary"
-                                               Href="@(_state.PureserviceTicketAddress + _state.PureserviceTicket.Id)"
-                                               Target="_blank"
-                                               Rel="noopener noreferrer">
-                                        Åpne i Pureservice
-                                    </MudButton>
-                                }
-                            </MudStack>
+                            <MudButton Size="Size.Small"
+                                        Variant="Variant.Text"
+                                        Color="Color.Secondary"
+                                        EndIcon="@Icons.Material.Outlined.Code"
+                                        OnClick="@(async () => await ShowJsonViewer(_state.PureserviceRelationships.RawJson))">
+                                Vis rådata
+                            </MudButton>
                         }
                     </MudCardActions>
 
@@ -978,9 +953,7 @@
                                 <MudText Typo="Typo.subtitle1">LAPS</MudText>
                                 <MudSpacer />
                                 <MudMenu Icon="@Icons.Material.Outlined.Settings" Class="pa-0" Dense=true AnchorOrigin="Origin.CenterLeft" TransformOrigin="Origin.CenterRight">
-                                    <MudMenuItem Label="Handling 1" />
-                                    <MudMenuItem Label="Handling 1" />
-                                    <MudMenuItem Label="Handling 1" />
+                                    <MudMenuItem Label="Roter pwd" />
                                 </MudMenu>
                             </MudStack>
 
@@ -1055,11 +1028,6 @@
                                 <MudImage Width="30" Src="/img/bitlocker.png" ObjectFit="ObjectFit.ScaleDown" />
                                 <MudText Typo="Typo.subtitle1">Bitlocker</MudText>
                                 <MudSpacer />
-                                <MudMenu Icon="@Icons.Material.Outlined.Settings" Class="pa-0" Dense=true AnchorOrigin="Origin.CenterLeft" TransformOrigin="Origin.CenterRight">
-                                    <MudMenuItem Label="Handling 1" />
-                                    <MudMenuItem Label="Handling 1" />
-                                    <MudMenuItem Label="Handling 1" />
-                                </MudMenu>
                             </MudStack>
 
                             <MudDivider Class="mb-3" />

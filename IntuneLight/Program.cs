@@ -3,35 +3,15 @@ using IntuneLight.Infrastructure;
 using IntuneLight.Models.Options;
 using IntuneLight.Services;
 using IntuneLight.Services.State;
-using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Options;
 using MudBlazor.Services;
 using Serilog;
-using Serilog.Events;
+using Vestfold.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure Serilog entirely in code
-Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Information()
-    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
-    .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
-    .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
-    .MinimumLevel.Override("Serilog.AspNetCore.RequestLoggingMiddleware", LogEventLevel.Warning)
-    .MinimumLevel.Override("System.Net.Http.HttpClient", LogEventLevel.Warning)
-    .Enrich.FromLogContext()
-    .Enrich.WithMachineName()
-    .Enrich.WithThreadId()
-    .WriteTo.File(
-        path: "c:\\sites\\logs\\intunelight-.log",
-        rollingInterval: RollingInterval.Day,
-        retainedFileCountLimit: 14,
-        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u}] {SourceContext} {Message:lj}{NewLine}{Exception}"
-    )
-    .CreateLogger();
-
-// Plug Serilog into ASP.NET Core
-builder.Host.UseSerilog();
+// Vestfold.Extensions.Logging handles Serilog setup
+builder.Logging.AddVestfoldLogging();
 
 // Bind from appsettings + env vars
 builder.Configuration.AddEnvironmentVariables();

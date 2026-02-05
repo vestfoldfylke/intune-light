@@ -1,5 +1,7 @@
-﻿@using IntuneLight.Infrastructure
+﻿@using IntuneLight.Helpers
+@using IntuneLight.Infrastructure
 @implements IDisposable
+@inject IConfiguration Configuration
 
 <MudNavMenu Class="custom-nav-menu">
 
@@ -13,7 +15,7 @@
     </MudStack>
 
     <MudText Class="version ml-5 mb-5" Typo="Typo.subtitle1">
-        Versjon - @version
+        Versjon - @_version
     </MudText>
 
 </MudNavMenu>
@@ -21,12 +23,15 @@
 
 @code
 {
+    private string _version = "ukjent";
+
 	protected override void OnInitialized()
 	{
 		_state.StateChanged += StateHasChanged;
-	}
 
-	private string version = typeof(Program)?.Assembly.GetName()?.Version?.ToString() ?? "ukjent";
+        // Read AppVersion from appsettings / Azure App Settings
+		_version = AppVersionHelper.GetUiVersion();
+	}
 
     public void Dispose ()=> _state.StateChanged -= StateHasChanged;
 }
