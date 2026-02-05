@@ -1,0 +1,68 @@
+﻿@using IntuneLight.Helpers
+@using MudBlazor
+
+<MudDialog DefaultFocus="DefaultFocus.None" ActionsClass="ma-3">
+    <DialogContent>
+
+        <MudStack Spacing="5">
+            <MudSelect T="string"
+                       Label="Autopilot-profil"
+                       @bind-Value="_selectedTag"
+                       Required="true"
+                       RequiredError="Velg autopilot-profil.">
+                @foreach (var item in AutopilotTagHelper.GetTagMappings())
+                {
+                    <MudSelectItem Value="@item.Value">@item.Key</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudSelect T="string"
+                       Label="Lokasjon"
+                       @bind-Value="_selectedLocationSuffix"
+                       Required="true"
+                       RequiredError="Velg lokasjon.">
+                @foreach (var item in AutopilotTagHelper.GetLocationSuffixMappings())
+                {
+                    <MudSelectItem Value="@item.Value">@item.Key</MudSelectItem>
+                }
+            </MudSelect>
+        </MudStack>
+
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="Cancel">Avbryt</MudButton>
+
+        <MudButton Variant="Variant.Filled"
+                    Disabled="@IsSaveDisabled"
+                    OnClick="Save">
+            Velg
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code 
+{
+    [CascadingParameter] private IMudDialogInstance _dialog { get; set; } = default!;
+
+    private string _selectedTag = string.Empty;
+    private string _selectedLocationSuffix = string.Empty;
+
+    private bool IsSaveDisabled =>
+        string.IsNullOrWhiteSpace(_selectedTag) || string.IsNullOrWhiteSpace(_selectedLocationSuffix);
+
+    private void Cancel()
+    {
+        _dialog.Cancel();
+    }
+
+    // Builds and returns the final tag (base tag + location suffix).
+    private void Save()
+    {
+        // Build final backend value based on selections
+        var finalTag = AutopilotTagHelper.BuildFinalTag(_selectedTag, _selectedLocationSuffix);
+
+        // Return final tag to the caller
+        _dialog.Close(DialogResult.Ok(finalTag));
+    }
+}

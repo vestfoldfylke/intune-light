@@ -1,0 +1,1365 @@
+﻿@page "/"
+@using IntuneLight.Components.Custom
+@using IntuneLight.Components.Dialogs
+@using IntuneLight.Helpers
+@using IntuneLight.Models.Defender
+@using IntuneLight.Models.Entra
+@using IntuneLight.Models.Intune
+@using IntuneLight.Models.Pureservice
+@using IntuneLight.Models.State
+@implements IDisposable
+
+<PageTitle>Hjem</PageTitle>
+
+@* Main container *@
+<MudContainer Style="@containerStyle" Class="mb-16">
+    
+    @* Intro and searchbar *@
+    <MudContainer MaxWidth="MaxWidth.Large" Class="my-16">
+
+        @* Intro *@
+        @if (_state.ManagedDevice == null)
+        {
+            <MudStack Justify="Justify.Center" Row Class="my-10" Style="width:100% !important">
+                <MudImage Src="/img/intune-light.png" Height="80" Alt="Intune light logo"/>
+                <MudText Typo="Typo.h4" Align="Align.Center">
+                    <b>Intune</b> <p style="font-weight:300">Light</p>
+                </MudText>
+            </MudStack>
+
+            <MudStack Justify="Justify.Center">
+                <MudText Typo="Typo.subtitle1" Align="Align.Center" Style="font-size:19px;font-weight:300">
+                    Intune light er et forenklet verktøy for servicedesk som gjør det enkelt å håndtere enheter.
+                    Løsningen gir tilgang til nødvendige device‑management funksjoner – og kun det som trengs for
+                    daglige oppgaver som sletting, nullstilling og generell administrasjon.
+                </MudText>
+            </MudStack>
+        }
+
+        @* Search bar *@
+        <MudGrid Justify="Justify.Center" Class="mt-10">
+
+            <MudItem xs="12" lg="12" md="12">
+                @if (_lastSearchSeconds.HasValue || _state.IsFetching)
+                {
+                    var secondsText = (_state.IsFetching ? _currentSearchSeconds : _lastSearchSeconds!.Value).ToString("0.0");
+
+                    <div style="display:flex; justify-content:flex-end; width:100%;">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-2 mr-2">
+                            <MudIcon Icon="@Icons.Material.Outlined.Timer" />
+                            <MudText Typo="Typo.caption">@secondsText s</MudText>
+                        </MudStack>
+                    </div>
+                }
+                else
+                {
+                    @* Dummy, replacement *@
+                    <div style="height:32px"/>
+                }
+
+                <MudTextField @bind-Value="_state.SearchSerial"
+                              Placeholder="Serienummer (f.eks. PV76KDF0)"
+                              Adornment="Adornment.End"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              OnAdornmentClick="SearchAsync"
+                              AdornmentColor="Color.Secondary"
+                              Immediate="true"
+                              Disabled="_state.IsFetching"
+                              OnKeyDown="HandleSearchKeyDown"
+                              Clearable="true"
+                              OnClearButtonClick="ClearSearchResult"
+                              Variant="Variant.Outlined"
+                              MaxLength="40"
+                              MaxLines="1"/>
+            </MudItem>
+
+            <MudItem xs="12" lg="12" md="12" Class="pt-0 mt-0">
+                @if (_state.IsFetching)
+                {
+                    <div class="mx-8">
+                        <MudProgressLinear Indeterminate="true" Color="Color.Info" Class="custom-progressbar" />
+                    </div>
+                }
+            </MudItem>
+
+        </MudGrid>
+
+    </MudContainer>
+
+    @* No device found *@
+    @if (_state.HasSearched && _state.ManagedDevice is null && !_state.IsFetching)
+    {
+        <MudContainer MaxWidth="MaxWidth.Large">
+            <MudAlert Severity="Severity.Warning">
+                Ingen enhet ble funnet for serienummer <b>@_state.SearchSerial</b>.
+            </MudAlert>
+        </MudContainer>
+    }
+
+    @if (_state.ManagedDevice is not null)
+    {
+        @* Device compliance *@
+        var badge = MapComplianceBadge(_state.ManagedDevice.ComplianceState);
+
+        @* User compliance *@
+        var userBadge = GetEntraUserStatusBadge(_state.EntraUser);
+
+        @* Device overview *@
+        <MudGrid Justify="Justify.Center" Spacing="3" Class="mt-10">
+
+            @* Left card *@
+            <MudItem xs="12" md="6" xl="6">
+                <MudPaper Elevation="3" Class="pa-5 overview-card">
+
+                    <MudStack Row Class="my-2" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudBadge Icon="@badge.icon"
+                                  Color="@badge.color"
+                                  Overlap="true">
+                            <MudImage Src="img/laptop1.png" Height="30" />
+                        </MudBadge>
+                        <MudText Typo="Typo.h6" Class="ml-3">
+                            @UiFormat.TextOrFallback(_state.ManagedDevice.DeviceName)
+                        </MudText>
+                    </MudStack>
+
+                    <MudStack Row=true Justify="Justify.FlexStart" Spacing="16" Class="mt-5">
+
+                        <MudStack Justify="Justify.FlexStart" AlignItems="AlignItems.Start">
+                            <div>
+                                <MudText Typo="Typo.body2" Class="mb-1"><b>Serienummer:</b></MudText>
+                                <MudText Typo="Typo.body2">
+                                    @UiFormat.TextOrFallback(_state.ManagedDevice.SerialNumber)
+                                </MudText>
+                            </div>
+                            <div>
+                                <MudText Typo="Typo.body2" Class="mb-1"><b>WiFi MAC-adresse:</b></MudText>
+                                <MudText Typo="Typo.body2">
+                                    @UiFormat.TextOrFallback(_state.ManagedDevice.WiFiMacAddress)
+                                </MudText>
+                            </div>
+                        </MudStack>
+
+                        <MudStack Justify="Justify.FlexEnd" AlignItems="AlignItems.Start">
+                            <div>
+                                <MudText Typo="Typo.body2" Class="mb-1"><b>Modell:</b></MudText>
+                                <MudText Typo="Typo.body2">
+                                    @UiFormat.TextOrFallback(_state.AutopilotDevice?.SystemFamily)
+                                </MudText>
+                            </div>
+                            <div>
+                                <MudText Typo="Typo.body2" Class="mb-1"><b>Produsent:</b></MudText>
+                                <MudText Typo="Typo.body2">
+                                    @UiFormat.TextOrFallback(_state.ManagedDevice.Manufacturer)
+                                </MudText>
+                            </div>
+                        </MudStack>
+
+                        <MudStack Justify="Justify.FlexEnd" AlignItems="AlignItems.Start">
+                            <div>
+                                <MudText Typo="Typo.body2" Class="mb-1"><b>Autopilot tag:</b></MudText>
+                                <MudText Typo="Typo.body2">
+                                    @UiFormat.TextWithoutPrefixOrFallback(_state.AutopilotDevice?.GroupTag, "windows-ap-")
+                                </MudText>
+                            </div>
+                            <div>
+                                <MudText Typo="Typo.body2" Class="mb-1"><b>Autopilot status:</b></MudText>
+                                <MudText Typo="Typo.body2">
+                                    @UiFormat.TextOrFallback(_state.AutopilotDevice?.EnrollmentState)
+                                </MudText>
+                            </div>
+                        </MudStack>
+
+                    </MudStack>
+
+                </MudPaper>
+            </MudItem>
+
+            @* Right card *@
+            <MudItem xs="12" md="6" xl="6">
+                <MudPaper Elevation="3" Class="pa-5 overview-card">
+
+                    <MudStack Row Class="mt-2" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudBadge Icon="@userBadge.icon"
+                                  Color="@userBadge.color"
+                                  Overlap="true">
+
+                            <MudTooltip Placement="Placement.Right"
+                                        Delay="300"
+                                        Disabled="@(_state.EntraUserPhoto is null)">
+                                <TooltipContent>
+                                    <MudAvatar Size="Size.Large" Style="height:120px;width:120px">
+                                        <MudImage Src="@UserPhotoDataUrl" ObjectFit="ObjectFit.Cover" />
+                                    </MudAvatar>
+                                </TooltipContent>
+                                <ChildContent>
+                                    <MudAvatar Size="Size.Medium"
+                                               Style="height:40px;width:40px"
+                                               Color="Color.Secondary">
+                                        @if (_state.EntraUserPhoto is { Length: > 0 })
+                                        {
+                                            <MudImage Src="@UserPhotoDataUrl"
+                                                      ObjectFit="ObjectFit.Cover" />
+                                        }
+                                        else
+                                        {
+                                            <MudIcon Icon="@Icons.Material.Filled.Person"
+                                                     Style="font-size:26px" />
+                                        }
+                                    </MudAvatar>
+                                </ChildContent>
+                            </MudTooltip>
+                        </MudBadge>
+                        <MudText Typo="Typo.h6" Class="ml-3">
+                            @UiFormat.TextOrFallback(_state.EntraUser?.DisplayName)
+                        </MudText>
+                    </MudStack>
+
+                    <MudStack Row=true Justify="Justify.FlexStart" Spacing="16" Class="mt-5">
+
+                        <MudStack Justify="Justify.FlexStart" AlignItems="AlignItems.Start">
+                            <div>
+                                <MudText Typo="Typo.body2" Class="mb-1"><b>Tittel:</b></MudText>
+                                <MudText Typo="Typo.body2">
+                                    @UiFormat.TextOrFallback(_state.EntraUser?.JobTitle)
+                                </MudText>
+                            </div>
+                            <div>
+                                <MudText Typo="Typo.body2" Class="mb-1"><b>Konto:</b></MudText>
+                                <MudText Typo="Typo.body2">
+                                    @UiFormat.TextOrFallback(_state.EntraUser?.UserPrincipalName)       
+                                </MudText>
+                            </div>
+                        </MudStack>
+
+                        <MudStack Justify="Justify.FlexStart" AlignItems="AlignItems.Start">
+                            <div>
+                                <MudText Typo="Typo.body2" Class="mb-1"><b>Mobil:</b></MudText>
+                                <MudText Typo="Typo.body2">
+                                    @UiFormat.TextOrFallback(_state.EntraUser?.MobilePhone)
+                                 </MudText>
+                            </div>
+                            <div>
+                                <MudText Typo="Typo.body2" Class="mb-1"><b>Lokasjon:</b></MudText>
+                                <MudText Typo="Typo.body2">
+                                    @UiFormat.TextOrFallback(_state.EntraUser?.OfficeLocation)      
+                                </MudText>
+                            </div>
+                        </MudStack>
+
+                        <MudStack Justify="Justify.FlexStart" AlignItems="AlignItems.Start">
+                            <div>
+                                <MudText Typo="Typo.body2" Class="mb-1"><b>Avdeling:</b></MudText>
+                                <MudText Typo="Typo.body2">
+                                    @UiFormat.TextOrFallback(_state.EntraUser?.Department)
+                                </MudText>
+                            </div>
+                            @if(!string.IsNullOrEmpty(_state.EntraUser?.Manager))
+                            {
+                                <div>
+                                    <MudText Typo="Typo.body2" Class="mb-1"><b>Leder:</b></MudText>
+                                    <MudText Typo="Typo.body2">
+                                        @UiFormat.TextOrFallback(_state.EntraUser?.Manager)
+                                     </MudText>
+                                </div>
+                            }
+                        </MudStack>
+
+                    </MudStack>
+
+                </MudPaper>
+            </MudItem>
+
+        </MudGrid>
+
+        @* System cards *@
+        <MudGrid Spacing="5" Class="mt-2">
+
+            @* ENTRA | User *@
+            <MudItem xs="12" md="6" lg="4">
+                <MudCard Class="device-card" Elevation="3">
+
+                    <MudCardContent Class="device-card-content">
+
+                        <MudStack Spacing="2">
+
+                            <MudStack Row AlignItems="AlignItems.Center">
+                                <MudImage Width="30" Src="/img/entra.png" ObjectFit="ObjectFit.ScaleDown" />
+                                <MudText Typo="Typo.subtitle1">Entra ID - bruker</MudText>
+                                <MudSpacer />
+                            </MudStack>
+
+                            <MudDivider Class="mb-3" />
+
+                            @if (_state.EntraUser is null)
+                            {
+                                <MudText Typo="Typo.body2">
+                                    Ingen Entra-data funnet.
+                                </MudText>
+                            }
+                            else
+                            {
+                                <MudGrid Class="mb-2" Spacing="3">
+
+                                    <MudItem xs="4">
+                                        <MudText Typo="Typo.body2"><b>Bruker:</b></MudText>
+                                    </MudItem>
+                                    
+                                    <MudItem xs="8">
+                                        <MudText Typo="Typo.body2">
+                                            @UiFormat.TextOrFallback(_state.EntraUser.DisplayName)
+                                        </MudText>
+                                    </MudItem>
+                                    
+                                    <MudItem xs="4">
+                                        <MudText Typo="Typo.body2"><b>UPN:</b></MudText>
+                                    </MudItem>
+                                    
+                                    <MudItem xs="8">
+                                        <MudText Typo="Typo.body2">
+                                            @UiFormat.TextOrFallback(_state.EntraUser.UserPrincipalName)
+                                        </MudText>
+                                    </MudItem>
+                                    
+                                    <MudItem xs="4">
+                                        <MudText Typo="Typo.body2"><b>Tittel:</b></MudText>
+                                    </MudItem>
+                                    
+                                    <MudItem xs="8">
+                                        <MudText Typo="Typo.body2">
+                                            @UiFormat.TextOrFallback(_state.EntraUser.JobTitle)
+                                         </MudText>
+                                    </MudItem>
+                                    
+                                    <MudItem xs="4">
+                                        <MudText Typo="Typo.body2"><b>Antall enheter:</b></MudText>
+                                    </MudItem>
+                                    
+                                    <MudItem xs="8">
+                                        <MudText Typo="Typo.body2">
+                                            @UiFormat.TextOrFallback(_state.UserDeviceCount?.ToString())
+                                        </MudText>
+                                    </MudItem>
+
+                                </MudGrid>
+                            }
+
+                        </MudStack>
+
+                    </MudCardContent>
+
+                    <MudCardActions Class="device-card-actions">
+                        @if (!string.IsNullOrWhiteSpace(_state.EntraUser?.RawJson))
+                        {
+                            <MudButton Size="Size.Small"
+                                       Variant="Variant.Text"
+                                       Color="Color.Secondary"
+                                       EndIcon="@Icons.Material.Outlined.Code"
+                                       OnClick="@(async () => await ShowJsonViewer(_state.EntraUser.RawJson))">
+                                Vis rådata
+                            </MudButton>
+                        }
+                    </MudCardActions>
+
+                </MudCard>
+            </MudItem>
+
+            @* ENTRA | Device *@
+            <MudItem xs="12" md="6" lg="4">
+                <MudCard Class="device-card" Elevation="3">
+
+                    <MudCardContent Class="device-card-content">
+
+                        <MudStack Spacing="2">
+
+                            <MudStack Row AlignItems="AlignItems.Center">
+                                <MudImage Width="30" Src="/img/entra.png" ObjectFit="ObjectFit.ScaleDown" />
+                                <MudText Typo="Typo.subtitle1">Entra ID - enhet</MudText>
+                                <MudSpacer/>
+                                <MudMenu Icon="@Icons.Material.Outlined.Settings" Class="pa-0" Dense=true AnchorOrigin="Origin.CenterLeft" TransformOrigin="Origin.CenterRight">
+                                    <MudMenuItem Label="Aktiver" />
+                                    <MudMenuItem Label="Deaktiver" />
+                                    <MudMenuItem Label="Slett" />
+                                </MudMenu>
+                            </MudStack>
+
+                            <MudDivider Class="mb-3" />
+
+                            @if (_state.EntraDevice is null)
+                            {
+                                <MudText Typo="Typo.body2">
+                                    Ingen Entra-data funnet.
+                                </MudText>
+                            }
+                            else
+                            {
+                                <MudGrid Class="mb-2" Spacing="3">
+                                    <MudItem xs="4">
+                                        <MudText Typo="Typo.body2"><b>Enhetsnavn:</b></MudText>
+                                    </MudItem>
+                                    <MudItem xs="8">
+                                        <MudText Typo="Typo.body2">
+                                            @UiFormat.TextOrFallback(_state.EntraDevice.DisplayName)
+                                        </MudText>
+                                    </MudItem>
+                                    <MudItem xs="4">
+                                        <MudText Typo="Typo.body2"><b>Profil:</b></MudText>
+                                    </MudItem>
+                                    <MudItem xs="8">
+                                        <MudText Typo="Typo.body2">
+                                            @UiFormat.TextOrFallback(_state.EntraDevice.EnrollmentProfileName)
+                                         </MudText>
+                                    </MudItem>
+                                    <MudItem xs="4">
+                                        <MudText Typo="Typo.body2"><b>Pålogget:</b></MudText>
+                                    </MudItem>
+                                    <MudItem xs="8">
+                                        <MudText Typo="Typo.body2">
+                                            @UiFormat.DateOrFallback(_state.EntraDevice.ApproximateLastSignInDateTime, fallback: "Ingen data")
+                                        </MudText>
+                                    </MudItem>
+                                    <MudItem xs="4">
+                                        <MudText Typo="Typo.body2"><b>Aktiv enhet:</b></MudText>
+                                    </MudItem>
+                                    <MudItem xs="8">
+                                        <MudText Typo="Typo.body2">@UiFormat.YesNo(_state.EntraDevice.AccountEnabled)</MudText>
+                                    </MudItem>
+                                </MudGrid>
+                            }
+
+                        </MudStack>
+
+                    </MudCardContent>
+
+                    <MudCardActions Class="device-card-actions">
+                        @if (!string.IsNullOrWhiteSpace(_state.EntraDevice?.RawJson))
+                        {
+                            <MudButton Size="Size.Small"
+                                       Variant="Variant.Text"
+                                       Color="Color.Secondary"
+                                       EndIcon="@Icons.Material.Outlined.Code"
+                                       OnClick="@(async () => await ShowJsonViewer(_state.EntraDevice.RawJson))">
+                                Vis rådata
+                            </MudButton>
+                        }
+                    </MudCardActions>
+
+                </MudCard>
+            </MudItem>
+
+            @* INTUNE *@
+            <MudItem xs="12" md="6" lg="4">
+                <MudCard Class="device-card" Elevation="3">
+
+                    <MudCardContent Class="device-card-content">
+
+                        <MudStack Spacing="2">
+
+                            <MudStack Row AlignItems="AlignItems.Center">
+                                <MudImage Width="30" Src="/img/intune.png" ObjectFit="ObjectFit.ScaleDown" />
+                                <MudText Typo="Typo.subtitle1">Intune - enhet</MudText>
+                                <MudSpacer />
+                                <MudMenu Icon="@Icons.Material.Outlined.Settings" Class="pa-0" Dense=true AnchorOrigin="Origin.CenterLeft" TransformOrigin="Origin.CenterRight">
+                                    <MudMenuItem Label="Synkroniser" />
+                                    <MudMenuItem Label="Fjernstyr" />
+                                    <MudMenuItem Label="Wipe" />
+                                    <MudMenuItem Label="Slett" />
+                                </MudMenu>
+                            </MudStack>
+                            
+                            <MudDivider Class="mb-3" />
+
+                            <MudGrid Class="mb-2" Spacing="3">
+                                <MudItem xs="4">
+                                    <MudText Typo="Typo.body2"><b>Samsvarsstatus:</b></MudText>
+                                </MudItem>
+                                <MudItem xs="8">
+                                    <MudText Typo="Typo.body2">@badge.label</MudText>
+                                </MudItem>
+                                <MudItem xs="4">
+                                    <MudText Typo="Typo.body2"><b>OS versjon:</b></MudText>
+                                </MudItem>
+                                <MudItem xs="8">
+                                    <MudText Typo="Typo.body2">
+                                        @UiFormat.CombineOrFallback(_state.ManagedDevice.OperatingSystem, _state.ManagedDevice.OsVersion)
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="4">
+                                    <MudText Typo="Typo.body2"><b>Siste sync:</b></MudText>
+                                </MudItem>
+                                <MudItem xs="8">
+                                    <MudText Typo="Typo.body2">
+                                        @UiFormat.DateOrFallback(_state.ManagedDevice.LastSyncDateTime, fallback: "ingen data")
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="4">
+                                    <MudText Typo="Typo.body2"><b>WiFi MAC:</b></MudText>
+                                </MudItem>
+                                <MudItem xs="8">
+                                    <MudText Typo="Typo.body2">
+                                        @UiFormat.TextOrFallback(_state.ManagedDevice.WiFiMacAddress, fallback: "ukjent")
+                                    </MudText>
+                                </MudItem>
+                            </MudGrid>
+
+                        </MudStack>
+
+                    </MudCardContent>
+
+                    <MudCardActions Class="device-card-actions">
+                        @if (!string.IsNullOrWhiteSpace(_state.ManagedDevice.RawJson))
+                        {
+                            <MudButton Size="Size.Small"
+                                       Variant="Variant.Text"
+                                       Color="Color.Secondary"
+                                       EndIcon="@Icons.Material.Outlined.Code"
+                                       OnClick="@(async () => await ShowJsonViewer(_state.ManagedDevice.RawJson))">
+                                Vis rådata
+                            </MudButton>
+                        }
+                    </MudCardActions>
+
+                </MudCard>
+            </MudItem>
+
+            @* DEFENDER *@
+            <MudItem xs="12" md="6" lg="4">
+                <MudCard Class="device-card" Elevation="3">
+
+                    <MudCardContent Class="device-card-content">
+
+                        <MudStack Spacing="2">
+
+                            <MudStack Row AlignItems="AlignItems.Center">
+                                <MudImage Width="30" Src="/img/defender.png" ObjectFit="ObjectFit.ScaleDown" />
+                                <MudText Typo="Typo.subtitle1">Defender - enhet</MudText>
+                                <MudSpacer />
+                                <MudMenu Icon="@Icons.Material.Outlined.Settings" Class="pa-0" Dense=true AnchorOrigin="Origin.CenterLeft" TransformOrigin="Origin.CenterRight">
+                                    <MudMenuItem Label="Full skann" />
+                                    <MudMenuItem Label="Hurtigskann" />
+                                </MudMenu>
+                            </MudStack>
+
+                            <MudDivider Class="mb-3" />
+
+                            @if (_state.DefenderDevice is null)
+                            {
+                                <MudText Typo="Typo.body2">
+                                    Ingen Defender-data funnet.
+                                </MudText>
+                            }
+                            else
+                            {
+                                <MudGrid Class="mb-2" Spacing="3">
+                                    <MudItem xs="4">
+                                        <MudText Typo="Typo.body2"><b>Status:</b></MudText>
+                                    </MudItem>
+                                    <MudItem xs="8">
+                                        <MudText Typo="Typo.body2">
+                                            @UiFormat.TextOrFallback(_state.DefenderDevice.HealthStatus, fallback: "ukjent")
+                                        </MudText>
+                                    </MudItem>
+                                    <MudItem xs="4">
+                                        <MudText Typo="Typo.body2"><b>Eksponering:</b></MudText>
+                                    </MudItem>
+                                    <MudItem xs="8">
+                                        <MudText Typo="Typo.body2">
+                                            @UiFormat.TextOrFallback(_state.DefenderDevice.ExposureLevel, fallback: "ukjent")
+                                        </MudText>
+                                    </MudItem>
+                                    <MudItem xs="4">
+                                        <MudText Typo="Typo.body2"><b>Isolert:</b></MudText>
+                                    </MudItem>
+                                    <MudItem xs="8">
+                                        <MudText Typo="Typo.body2">
+                                            <MudText Typo="Typo.body2">@UiFormat.YesNo(_state.IsIsolated)</MudText>
+                                        </MudText>
+                                    </MudItem>
+                                    <MudItem xs="4">
+                                        <MudText Typo="Typo.body2"><b>Tagger:</b></MudText>
+                                    </MudItem>
+                                    <MudItem xs="8">
+                                        <MudText Typo="Typo.body2">
+                                            @UiFormat.JoinOrFallback(_state.DefenderDevice.MachineTags)
+                                        </MudText>
+                                    </MudItem>
+                                </MudGrid>
+                            }
+                        
+                        </MudStack>
+                    
+                    </MudCardContent>
+
+                    <MudCardActions Class="device-card-actions">
+                        @if (!string.IsNullOrWhiteSpace(_state.DefenderDevice?.RawJson))
+                        {
+                            <MudButton Size="Size.Small"
+                                       Variant="Variant.Text"
+                                       Color="Color.Secondary"
+                                       EndIcon="@Icons.Material.Outlined.Code"
+                                       OnClick="@(async () => await ShowJsonViewer(_state.DefenderDevice.RawJson))">
+                                Vis rådata
+                            </MudButton>
+                        }
+                    </MudCardActions>
+
+                </MudCard>
+            </MudItem>
+
+            @* AUTOPILOT *@
+            <MudItem xs="12" md="6" lg="4">
+                <MudCard Class="device-card" Elevation="3">
+
+                    <MudCardContent Class="device-card-content">
+                        
+                        <MudStack Spacing="2">
+
+                            <MudStack Row AlignItems="AlignItems.Center">
+                                <MudImage Width="30" Src="/img/autopilot.png" ObjectFit="ObjectFit.ScaleDown" />
+                                <MudText Typo="Typo.subtitle1">Autopilot - enhet</MudText>
+                                <MudSpacer />
+                                <MudMenu Icon="@Icons.Material.Outlined.Settings" Class="pa-0" Dense=true AnchorOrigin="Origin.CenterLeft" TransformOrigin="Origin.CenterRight">
+                                    <MudMenuItem Label="Endre tagg" OnClick="PickAutopilotTagAsync"/>
+                                    <MudMenuItem Label="Synkroniser" />
+                                </MudMenu>
+                            </MudStack>
+                            
+                            <MudDivider Class="mb-3" />
+
+                            @if (_state.AutopilotDevice is null)
+                            {
+                                <MudText Typo="Typo.body2">
+                                    Ingen Autopilot-registrering funnet.
+                                </MudText>
+                            }
+                            else
+                            {
+
+                                <MudGrid Class="mb-2" Spacing="3">
+                                    <MudItem xs="4">
+                                        <MudText Typo="Typo.body2"><b>Tagg:</b></MudText>
+                                    </MudItem>
+                                    <MudItem xs="8">
+                                        <MudText Typo="Typo.body2">
+                                            @UiFormat.TextOrFallback(_state.AutopilotDevice.GroupTag, "ikke satt")
+                                        </MudText>
+                                    </MudItem>
+                                    <MudItem xs="4">
+                                        <MudText Typo="Typo.body2"><b>Status:</b></MudText>
+                                    </MudItem>
+                                    <MudItem xs="8">
+                                        <MudText Typo="Typo.body2">
+                                            @UiFormat.TextOrFallback(_state.AutopilotDevice.EnrollmentState, "ukjent")
+                                        </MudText>
+                                    </MudItem>
+                                    <MudItem xs="4">
+                                        <MudText Typo="Typo.body2"><b>Tildelt profil:</b></MudText>
+                                    </MudItem>
+                                    <MudItem xs="8">
+                                        <MudText Typo="Typo.body2">
+                                            @UiFormat.DateOrFallback(_state.AutopilotDevice.DeploymentProfileAssignedDateTime, "g", "ingen data")
+                                        </MudText>
+                                    </MudItem>
+                                    <MudItem xs="4">
+                                        <MudText Typo="Typo.body2"><b>Eier:</b></MudText>
+                                    </MudItem>
+                                    <MudItem xs="8">
+                                        <MudText Typo="Typo.body2">
+                                            @UiFormat.TextOrFallback(_state.AutopilotDevice.UserPrincipalName, "ikke satt")
+                                        </MudText>
+                                    </MudItem>
+                                </MudGrid>
+                            }
+                        
+                        </MudStack>
+                    
+                    </MudCardContent>
+
+                    <MudCardActions Class="device-card-actions">
+                        @if (!string.IsNullOrWhiteSpace(_state.AutopilotDevice?.RawJson))
+                        {
+                            <MudButton Size="Size.Small"
+                                       Variant="Variant.Text"
+                                       Color="Color.Secondary"
+                                       EndIcon="@Icons.Material.Outlined.Code"
+                                       OnClick="@(async () => await ShowJsonViewer(_state.AutopilotDevice.RawJson))">
+                                Vis rådata
+                            </MudButton>
+                        }
+                    </MudCardActions>
+
+                </MudCard>
+            </MudItem>
+
+            @* PURESERVICE USER *@
+            <MudItem xs="12" md="6" lg="4">
+                <MudCard Class="device-card" Elevation="3">
+
+                    <MudCardContent Class="device-card-content">
+                    
+                        <MudStack Spacing="2">
+
+                            <MudStack Row AlignItems="AlignItems.Center">
+                                <MudImage Width="30" Src="@pureserviceIcon" ObjectFit="ObjectFit.ScaleDown" />
+                                <MudText Typo="Typo.subtitle1">Pureservice - bruker</MudText>
+                                <MudSpacer />
+                            </MudStack>
+                            
+                            <MudDivider Class="mb-3" />
+
+                            @if (_state.PureserviceUser is null)
+                            {
+                                <MudText Typo="Typo.body2">
+                                    Ingen Pureservice-bruker funnet.
+                                </MudText>
+                            }
+                            else
+                            {
+                                <MudGrid Class="mb-2" Spacing="3">
+                                    <MudItem xs="4">
+                                        <MudText Typo="Typo.body2"><b>Bruker:</b></MudText>
+                                    </MudItem>
+                                    <MudItem xs="8">
+                                        <MudText Typo="Typo.body2">
+                                            @UiFormat.TextOrFallback(_state.PureserviceUser.FullName, "ukjent")
+                                        </MudText>
+                                    </MudItem>
+                                    <MudItem xs="4">
+                                        <MudText Typo="Typo.body2"><b>Avdeling:</b></MudText>
+                                    </MudItem>
+                                    <MudItem xs="8">
+                                        <MudText Typo="Typo.body2">
+                                            @UiFormat.TextOrFallback(_state.PureserviceUser.Department, "ukjent")
+                                        </MudText>
+                                    </MudItem>
+                                    <MudItem xs="4">
+                                        <MudText Typo="Typo.body2"><b>Endret:</b></MudText>
+                                    </MudItem>
+                                    <MudItem xs="8">
+                                        <MudText Typo="Typo.body2">
+                                            @UiFormat.DateOrFallback(_state.PureserviceUser.Modified, "g", "ukjent")
+                                        </MudText>
+                                    </MudItem>
+                                    <MudItem xs="4">
+                                        <MudText Typo="Typo.body2"><b>Superbruker:</b></MudText>
+                                    </MudItem>
+                                    <MudItem xs="8">
+                                        <MudText Typo="Typo.body2">
+                                            @UiFormat.YesNo(_state.PureserviceUser.IsSuperuser, "Ja", "Nei")
+                                        </MudText>
+                                    </MudItem>
+                                </MudGrid>
+                            }
+
+                        </MudStack>
+                    
+                    </MudCardContent>
+
+                    <MudCardActions Class="device-card-actions">
+                        @if (!string.IsNullOrWhiteSpace(_state.PureserviceUser?.RawJson))
+                        {
+                            <MudButton Size="Size.Small"
+                                       Variant="Variant.Text"
+                                       Color="Color.Secondary"
+                                       EndIcon="@Icons.Material.Outlined.Code"
+                                       OnClick="@(async () => await ShowJsonViewer(_state.PureserviceUser.RawJson))">
+                                Vis rådata
+                            </MudButton>
+                        }
+                    
+                    </MudCardActions>
+                
+                </MudCard>
+            </MudItem>
+
+            @* PURESERVICE ASSET *@
+            <MudItem xs="12" md="6" lg="4">
+                <MudCard Class="device-card" Elevation="3">
+
+                    <MudCardContent Class="device-card-content">
+                    
+                        <MudStack Spacing="2">
+
+                            <MudStack Row AlignItems="AlignItems.Center">
+                                <MudImage Width="30" Src="@pureserviceIcon" ObjectFit="ObjectFit.ScaleDown" />
+                                <MudText Typo="Typo.subtitle1">Pureservice - enhet</MudText>
+                                <MudSpacer />
+                            </MudStack>
+                            
+                            <MudDivider Class="mb-3" />
+
+                            @if (_state.PureserviceAssetBySn is null)
+                            {
+                                <MudText Typo="Typo.body2">
+                                    Ingen Pureservice-enhet funnet.
+                                </MudText>
+                            }
+                            else
+                            {
+                                <MudGrid Class="mb-2" Spacing="3">
+                                    <MudItem xs="4">
+                                        <MudText Typo="Typo.body2"><b>Unik Id:</b></MudText>
+                                    </MudItem>
+                                    <MudItem xs="8">
+                                        <MudText Typo="Typo.body2">
+                                            @UiFormat.TextOrFallback(_state.PureserviceAssetBySn.UniqueId, "ukjent")
+                                        </MudText>
+                                    </MudItem>
+                                    <MudItem xs="4">
+                                        <MudText Typo="Typo.body2"><b>Navn:</b></MudText>
+                                    </MudItem>
+                                    <MudItem xs="8">
+                                        <MudText Typo="Typo.body2">
+                                            @UiFormat.TextOrFallback(_state.PureserviceAssetBySn.Name, "ukjent")
+                                        </MudText>
+                                    </MudItem>
+                                    <MudItem xs="4">
+                                        <MudText Typo="Typo.body2"><b>Opprettet:</b></MudText>
+                                    </MudItem>
+                                    <MudItem xs="8">
+                                        <MudText Typo="Typo.body2">
+                                            @UiFormat.DateOrFallback(_state.PureserviceAssetBySn.Created, "g", "Ingen data")
+                                        </MudText>
+                                    </MudItem>
+                                    <MudItem xs="4">
+                                        <MudText Typo="Typo.body2"><b>Endret:</b></MudText>
+                                    </MudItem>
+                                    <MudItem xs="8">
+                                        <MudText Typo="Typo.body2">
+                                            @UiFormat.DateOrFallback(_state.PureserviceAssetBySn.Modified, "g", "Ingen data")
+                                        </MudText>
+                                    </MudItem>
+                                </MudGrid>
+                            }
+                        
+                        </MudStack>
+                    
+                    </MudCardContent>
+
+                    <MudCardActions Class="device-card-actions">
+                        @if (!string.IsNullOrWhiteSpace(_state.PureserviceAssetBySn?.RawJson))
+                        {
+                            <MudButton Size="Size.Small"
+                                       Variant="Variant.Text"
+                                       Color="Color.Secondary"
+                                       EndIcon="@Icons.Material.Outlined.Code"
+                                       OnClick="@(async () => await ShowJsonViewer(_state.PureserviceAssetBySn.RawJson))">
+                                Vis rådata
+                            </MudButton>
+                        }
+                    </MudCardActions>
+
+                </MudCard>
+            </MudItem>
+
+            @* PURESERVICE RELATIONSHIP *@
+            <MudItem xs="12" md="6" lg="4">
+                <MudCard Class="device-card" Elevation="3">
+                    
+                    <MudCardContent Class="device-card-content">
+
+                        <MudStack Spacing="2">
+
+                            <MudStack Row AlignItems="AlignItems.Center">
+                                <MudImage Width="30" Src="@pureserviceIcon" ObjectFit="ObjectFit.ScaleDown" />
+                                <MudText Typo="Typo.subtitle1">Pureservice - sak</MudText>
+                                <MudSpacer />
+                                <MudMenu Icon="@Icons.Material.Outlined.Settings" Class="pa-0" Dense=true AnchorOrigin="Origin.CenterLeft" TransformOrigin="Origin.CenterRight">
+                                    @if(_state.PureserviceTicket is not null)
+                                    {
+                                        <MudMenuItem Label="Åpne i Pureservice" 
+                                                     Href="@(_state.PureserviceTicketAddress + _state.PureserviceTicket.Id)"
+                                                     Target="_blank"
+                                                     Rel="noopener noreferrer" />
+                                    }
+                                </MudMenu>
+                            </MudStack>
+
+                            <MudDivider Class="mb-3" />
+
+                            @if (_state.PureserviceTicket is null)
+                            {
+                                <MudText Typo="Typo.body2">
+                                    Ingen saker ble funnet.
+                                </MudText>
+                            }
+                            else
+                            {
+                                <MudGrid Class="mb-2" Spacing="3">
+                                    <MudItem xs="4">
+                                        <MudText Typo="Typo.body2"><b>Opprettet:</b></MudText>
+                                    </MudItem>
+                                    <MudItem xs="8">
+                                        <MudText Typo="Typo.body2">
+                                            @UiFormat.DateOrFallback(_state.PureserviceTicket.Created, "g", "Ingen data")
+                                        </MudText>
+                                    </MudItem>
+                                    <MudItem xs="4">
+                                        <MudText Typo="Typo.body2"><b>Endret:</b></MudText>
+                                    </MudItem>
+                                    <MudItem xs="8">
+                                        <MudText Typo="Typo.body2">
+                                            @UiFormat.DateOrFallback(_state.PureserviceTicket.Modified, "g", "Ingen data")
+                                        </MudText>
+                                    </MudItem>
+                                    <MudItem xs="4">
+                                        <MudText Typo="Typo.body2"><b>Emne:</b></MudText>
+                                    </MudItem>
+                                    <MudItem xs="8">
+                                        <MudText Typo="Typo.body2">
+                                            @UiFormat.TextOrFallback(_state.PureserviceTicket.Subject, "ukjent")
+                                        </MudText>
+                                    </MudItem>
+                                    <MudItem xs="4">
+                                        <MudText Typo="Typo.body2"><b>Beskrivelse:</b></MudText>
+                                    </MudItem>
+                                    <MudItem xs="8">
+                                        <MudText Typo="Typo.body2">
+                                            @UiFormat.TextOrFallback(_state.PureserviceTicket.Description, "ingen beskrivelse")
+                                        </MudText>
+                                    </MudItem>
+                                </MudGrid>
+                            }
+
+                        </MudStack>
+
+                    </MudCardContent>
+
+                    <MudCardActions Class="device-card-actions">
+                        @if (!string.IsNullOrWhiteSpace(_state.PureserviceRelationships?.RawJson))
+                        {
+                            <MudButton Size="Size.Small"
+                                        Variant="Variant.Text"
+                                        Color="Color.Secondary"
+                                        EndIcon="@Icons.Material.Outlined.Code"
+                                        OnClick="@(async () => await ShowJsonViewer(_state.PureserviceRelationships.RawJson))">
+                                Vis rådata
+                            </MudButton>
+                        }
+                    </MudCardActions>
+
+                </MudCard>
+            </MudItem>
+
+            @* SECRET (LAPS) *@
+            <MudItem xs="12" md="6" lg="4">
+                <MudCard Class="device-card" Elevation="3">
+
+                    <MudCardContent Class="device-card-content">
+                    
+                        <MudStack Spacing="2">
+
+                            <MudStack Row AlignItems="AlignItems.Center">
+                                <MudImage Width="30" Src="/img/laps.png" ObjectFit="ObjectFit.ScaleDown" />
+                                <MudText Typo="Typo.subtitle1">LAPS</MudText>
+                                <MudSpacer />
+                                <MudMenu Icon="@Icons.Material.Outlined.Settings" Class="pa-0" Dense=true AnchorOrigin="Origin.CenterLeft" TransformOrigin="Origin.CenterRight">
+                                    <MudMenuItem Label="Roter pwd" />
+                                </MudMenu>
+                            </MudStack>
+
+                            <MudDivider Class="mb-3" />
+
+                            <!-- LAPS -->
+                            <MudStack Spacing="2">
+                                @if (_state.DeviceCredential?.Credentials is null || _state.DeviceCredential.Credentials.Count == 0)
+                                {
+                                    <MudText Typo="Typo.caption">
+                                        Ingen LAPS-passord funnet.
+                                    </MudText>
+                                }
+                                else
+                                {
+                                    var credential = _state.DeviceCredential.Credentials.First();
+
+                                    <MudGrid Class="mb-2" Spacing="3">
+                                        <MudItem xs="4">
+                                            <MudText Typo="Typo.body2"><b>Konto:</b></MudText>
+                                        </MudItem>
+                                        <MudItem xs="8">
+                                            <MudText Typo="Typo.body2">
+                                                @UiFormat.TextOrFallback(credential.AccountName, "ukjent")
+                                            </MudText>
+                                        </MudItem>
+                                        <MudItem xs="4">
+                                            <MudText Typo="Typo.body2"><b>Passord:</b></MudText>
+                                        </MudItem>
+                                        <MudItem xs="8">
+                                            <MudText Typo="Typo.body2">
+                                                @UiFormat.TextOrFallback(credential.DecodedPassword, "ikke tilgjengelig")
+                                            </MudText>
+                                        </MudItem>
+                                    </MudGrid>
+
+                                    <QrCodeViewer Class="my-2"
+                                                  QrText="@credential.DecodedPassword"
+                                                  SwitchText="Vis QR" />
+                                }
+                            </MudStack>
+
+                        </MudStack>
+
+                    </MudCardContent>
+
+                    <MudCardActions Class="device-card-actions">
+                        @if (!string.IsNullOrWhiteSpace(_state.DeviceCredential?.RawJson))
+                        {
+                            <MudButton Size="Size.Small"
+                                        Variant="Variant.Text"
+                                        Color="Color.Secondary"
+                                        EndIcon="@Icons.Material.Outlined.Code"
+                                        OnClick="@(async () => await ShowJsonViewer(_state.DeviceCredential.RawJson))">
+                                Vis rådata
+                            </MudButton>
+                        }
+                    </MudCardActions>
+
+                </MudCard>
+            </MudItem>
+
+            @* SECRET (BitLocker) *@
+            <MudItem xs="12" md="6" lg="4">
+                <MudCard Class="device-card" Elevation="3">
+
+                    <MudCardContent Class="device-card-content">
+
+                        <MudStack Spacing="2">
+
+                            <MudStack Row AlignItems="AlignItems.Center">
+                                <MudImage Width="30" Src="/img/bitlocker.png" ObjectFit="ObjectFit.ScaleDown" />
+                                <MudText Typo="Typo.subtitle1">Bitlocker</MudText>
+                                <MudSpacer />
+                            </MudStack>
+
+                            <MudDivider Class="mb-3" />
+
+                            <!-- BitLocker -->
+                            <MudStack Class="mt-3">
+                                @if (_state.BitlockerRecoveryKey is null)
+                                {
+                                    <MudText Typo="Typo.caption">
+                                        Ingen BitLocker-nøkkel funnet.
+                                    </MudText>
+                                }
+                                else
+                                {
+                                    <MudGrid Class="mb-2" Spacing="3">
+                                        <MudItem xs="4">
+                                            <MudText Typo="Typo.body2"><b>Nøkkel-id:</b></MudText>
+                                        </MudItem>
+                                        <MudItem xs="8">
+                                            <MudText Typo="Typo.body2">
+                                                @UiFormat.TextOrFallback(_state.BitlockerRecoveryKey.Id, "ukjent")
+                                            </MudText>
+                                        </MudItem>
+                                        <MudItem xs="4">
+                                            <MudText Typo="Typo.body2"><b>Enhets-id:</b></MudText>
+                                        </MudItem>
+                                        <MudItem xs="8">
+                                            <MudText Typo="Typo.body2">
+                                                @UiFormat.TextOrFallback(_state.BitlockerRecoveryKey.DeviceId, "ukjent")
+                                            </MudText>
+                                        </MudItem>
+                                    </MudGrid>
+
+                                    @if (_state.BitlockerRecoveryKey.Key is { Length: > 0 })
+                                    {
+                                        <QrCodeViewer Class="my-2"
+                                                        QrText="@_state.BitlockerRecoveryKey.Key"
+                                                        SwitchText="Vis QR" />
+                                    }
+                                }
+                            </MudStack>
+
+                        </MudStack>
+
+                    </MudCardContent>
+
+                    <MudCardActions Class="device-card-actions">
+                        @if (!string.IsNullOrWhiteSpace(_state.BitlockerRecoveryKey?.RawJson))
+                        {
+                            <MudButton Size="Size.Small"
+                                       Variant="Variant.Text"
+                                       Color="Color.Secondary"
+                                       EndIcon="@Icons.Material.Outlined.Code"
+                                       OnClick="@(async () => await ShowJsonViewer(_state.BitlockerRecoveryKey.RawJson))">
+                                Vis rådata
+                            </MudButton>
+                        }
+                    </MudCardActions>
+
+                </MudCard>
+            </MudItem>
+
+        </MudGrid>
+    }
+
+</MudContainer>
+
+@code
+{
+    #region Parameters
+
+    // Time the ferch operation
+    private double _currentSearchSeconds;          
+    private double? _lastSearchSeconds;           
+    private System.Timers.Timer? _searchTimer;
+
+    // Select pureservice icon based om theme
+    private string pureserviceIcon => _state.IsDarkMode ? "/img/pureservice_light.png" : "/img/pureservice_dark.png";
+
+    // Style for search filed
+    private string containerStyle => _state.ManagedDevice == null ? "margin-top:100px;max-width:1800px;" : "margin-top:50px;max-width:1800px;";
+
+    #endregion
+
+    #region Initializations
+
+    protected override void OnInitialized()
+    {
+        _state.StateChanged += StateHasChanged;
+    }
+
+    #endregion
+
+    #region Search
+
+    // Handles the Enter key on the search field and triggers a device lookup.
+    private async Task HandleSearchKeyDown(KeyboardEventArgs args)
+    {
+        // Trigger search when the user presses Enter.
+        if (args.Key == "Enter" && !_state.IsFetching && !string.IsNullOrWhiteSpace(_state.SearchSerial))
+            await SearchAsync();
+    }
+
+    // Looks up a device by serial number and enriches it with data from several services.
+    private async Task SearchAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_state.SearchSerial))
+        {
+            _snackbar.Add("Skriv inn et serienummer før du søker.", Severity.Warning);
+            return;
+        }
+
+        _state.IsFetching = true;
+        _state.HasSearched = false;
+        _state.ClearResults(keepSearchSerial: true);
+        StartSearchTimer();
+
+        // Perform the search and data enrichment.
+        var results = new DeviceLookupResults();
+
+        await _uiErrorHandler.RunSafeAsync(
+            async () =>
+            {
+                // Resolve Intune managed device by serial number.
+                results.ManagedDevice = await _intuneService.GetDeviceBySerialAsync(_state.SearchSerial);
+                if (results.ManagedDevice is null) 
+                    return;
+
+                // Fetch LAPS password.
+                results.DeviceCredential = await _intuneService.GetLapsPasswordByAzureDeviceId(results.ManagedDevice.AzureADDeviceId);
+
+                // Resolve Defender device from AAD device id.
+                results.DefenderDevice = await _defenderService.GetDeviceByAadDeviceIdAsync(results.ManagedDevice.AzureADDeviceId);
+
+                // Fetch device isolation status from defender
+                if (results.DefenderDevice is not null)
+                    results.IsIsolated = await _defenderService.GetIsolationStatusByMachineId(results.DefenderDevice.Id);
+
+                // Resolve Entra user by UPN.
+                results.EntraUser = await _entraDirectoryService.GetUserByUpnAsync(results.ManagedDevice.UserPrincipalName);
+
+                // Fetch entra user photo
+                if (results.EntraUser is not null)
+                    results.EntraUserPhoto = await _entraDirectoryService.GetUserPhotoAsync(results.EntraUser.Id);
+
+                // Fetch Autopilot device info.
+                results.AutopilotDevice = await _intuneService.GetAutopilotDeviceBySerialAsync(results.ManagedDevice.SerialNumber);
+
+                // Fetch BitLocker recovery key.
+                results.BitlockerRecoveryKey = await _intuneService.GetBitlockerRecoveryKeyByAzureAdDeviceIdAsync(results.ManagedDevice.AzureADDeviceId);
+
+                // Fetch Entra device by device id
+                results.EntraDevice = await _entraDirectoryService.GetDeviceByAzureAdDeviceIdAsync(results.ManagedDevice.AzureADDeviceId);
+
+                // Try to count UserDevice
+                if (results.EntraUser is not null)
+                    results.UserDeviceCount = await _entraDirectoryService.GetRegisteredDevicesForUser(results.EntraUser.Id);
+
+                // Fetch Pureservice user by email (UPN).
+                results.PureserviceUser = await _pureserviceService.GetUserByEmailAsync(results.ManagedDevice.UserPrincipalName);
+
+                // Fetch pureservice asset by serial number, then by id for full details
+                results.PureserviceAssetBySn = await _pureserviceService.GetAssetBySerialAsync(results.ManagedDevice.SerialNumber);
+
+                // Fetch pureservice asset relationships by asset id
+                if (results.PureserviceAssetBySn is not null)
+                    results.PureserviceRelationships = await _pureserviceService.GetRelationshipsByAssetIdAsync(results.PureserviceAssetBySn.Id.ToString());
+
+                // Try to get the first ticket related to the asset
+                if(results.PureserviceRelationships is not null)
+                {
+                    if (results.PureserviceRelationships.Relationships != null)
+                    {
+                        // Finn første ticket-relasjon
+                        var ticketRel = results.PureserviceRelationships.Relationships.FirstOrDefault(r => r.ToTicketId.HasValue);
+                        var ticket = results.PureserviceRelationships.Linked.Tickets.FirstOrDefault(t => t.Id == ticketRel?.ToTicketId);
+                        var user = results.PureserviceRelationships.Linked.Users.FirstOrDefault(); // eller match via links
+
+                        if (ticket != null)
+                            results.PureserviceTicket = ticket;
+                    }
+                }
+            },
+            after: () =>
+            {
+                // Only persist results when we actually found a device
+                if (results.ManagedDevice is not null)
+                    _state.SetResults(results);
+
+                _state.IsFetching = false;
+                _state.HasSearched = true;
+                StopSearchTimer();
+
+            });
+    }
+
+    // Clear search results and reset state.
+    private void ClearSearchResult()
+    {
+        StopSearchTimer();
+
+        _currentSearchSeconds = 0;
+        _lastSearchSeconds = null;
+
+        _state.HasSearched = false;
+        _state.ClearResults(keepSearchSerial: false);
+    }
+
+    #endregion
+
+    #region Dialogs
+
+    // Opens a dialog that displays raw JSON data in a formatted viewer.
+    private async Task ShowJsonViewer(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return;
+
+        var parameters = new DialogParameters
+        {
+            ["Json"] = json
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Large,
+            FullWidth = true,
+            CloseButton = true,
+            BackdropClick = false
+        };
+
+        await _dialogService.ShowAsync<JsonViewerDialog>("Rådata", parameters, options);
+    }
+
+    // Opens the Autopilot tag dialog and returns the selected final tag if the user confirms.
+    private async Task<string?> PickAutopilotTagAsync()
+    {
+        var options = new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small };
+        var dialog = await _dialogService.ShowAsync<AutopilotTagDialog>("Velg Autopilot-tag", options);
+        var result = await dialog.Result;
+
+        if (result is null || result.Canceled)
+            return null;
+
+        var tag = result.Data as string;
+
+        _snackbar.Add($"Du har valgt : {tag}");
+
+        return tag;
+    }
+
+
+    #endregion
+
+    #region Timer
+
+    // Starts the stopwatch-like timer that updates the elapsed seconds while the API search is running.
+    private void StartSearchTimer()
+    {
+        StopSearchTimer();                         // ensure no old timer
+        _currentSearchSeconds = 0;                 // reset live counter
+
+        _searchTimer = new System.Timers.Timer(100); // 0.1 s interval
+        _searchTimer.Elapsed += async (_, _) =>
+        {
+            _currentSearchSeconds += 0.1;          // update live counter
+            await InvokeAsync(StateHasChanged);    // refresh UI
+        };
+        _searchTimer.AutoReset = true;
+        _searchTimer.Start();
+    }
+
+    // Stops and disposes the search timer when the API call completes.
+    private void StopSearchTimer()
+    {
+        if (_searchTimer is null)
+            return;
+
+        _searchTimer.Stop();
+        _searchTimer.Dispose();
+        _searchTimer = null;
+
+        // Store last search duration so it stays visible
+        _lastSearchSeconds = _currentSearchSeconds;
+    }
+
+    #endregion
+
+    #region Helpers
+
+    // Maps Intune compliance state to a UI badge (icon, color, and label).
+    private static (string icon, Color color, string label) MapComplianceBadge(string? state)
+    {
+        // Normalize input from Graph/Intune (string values like "compliant", "noncompliant", etc.)
+        var s = (state ?? string.Empty).Trim().ToLowerInvariant();
+
+        return s switch
+        {
+            "compliant" => (Icons.Material.Outlined.CheckCircle, Color.Success, "Kompatibel"),
+            "noncompliant" => (Icons.Material.Outlined.Block, Color.Error, "Ikke kompatibel"),
+            "ingraceperiod" => (Icons.Material.Outlined.Schedule, Color.Warning, "I overgangsperiode"),
+            "conflict" => (Icons.Material.Outlined.Report, Color.Warning, "Regelkonflikt"),
+            "error" => (Icons.Material.Outlined.ErrorOutline, Color.Error, "Feil"),
+            "configmanager" => (Icons.Material.Outlined.Settings, Color.Info, "ConfigMgr"),
+            _ => (Icons.Material.Outlined.HelpOutline, Color.Default, "Ukjent")
+        }; ;
+    }
+
+    private (string icon, Color color) GetEntraUserStatusBadge(EntraUser? user)
+    {
+        if (user is null)
+            return (Icons.Material.Outlined.HelpOutline, Color.Default);
+
+        return user.AccountEnabled
+            ? (Icons.Material.Outlined.CheckCircle, Color.Success)
+            : (Icons.Material.Outlined.Block, Color.Error);
+    }
+
+    private string? UserPhotoDataUrl => _state.EntraUserPhoto is { Length: > 0 }
+                    ? $"data:image/jpeg;base64,{Convert.ToBase64String(_state.EntraUserPhoto)}"
+                    : null;
+
+    #endregion
+
+    #region Dispose
+
+    // Ensures the timer is cleaned up if the component is disposed.
+    public void Dispose() 
+    {
+        _state.StateChanged -= StateHasChanged;
+        StopSearchTimer();
+    }
+
+    #endregion
+}

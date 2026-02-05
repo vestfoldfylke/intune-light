@@ -1,0 +1,25 @@
+﻿@inject IJSRuntime _js
+
+<div id="blazor-error-ui" data-nosnippet>
+    <MudPaper Elevation="6" Class="blazor-error-container pa-3">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Medium" Color="Color.Warning"/>
+            <MudText Typo="Typo.body1">En uventet feil har oppstått.</MudText>
+            <MudSpacer />
+            <MudButton Color="Color.Info" Variant="Variant.Filled" Size="Size.Small" OnClick="ReloadAsync">Last inn på nytt</MudButton>
+        </MudStack>
+    </MudPaper>
+</div>
+
+@code 
+{
+	#region JS calls
+
+    // Reloads page to recover app state.
+    private async Task ReloadAsync() => await _js.InvokeVoidAsync("location.reload");
+
+    // Hides the error bar without reloading.
+    private async Task DismissAsync() => await _js.InvokeVoidAsync("eval", "document.getElementById('blazor-error-ui').style.display='none';");
+
+	#endregion
+}

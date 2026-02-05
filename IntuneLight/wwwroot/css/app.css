@@ -1,0 +1,135 @@
+﻿.raw-view {
+    display: block;
+    min-width: 100%;
+    max-height: 70vh;
+    min-height: 70vh;
+    overflow: auto;
+    white-space: pre;
+    background: var(--mud-palette-surface);
+    color: var(--mud-palette-text-primary);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 4px;
+    padding: 12px;
+    margin-bottom:30px;
+    font-family: var(--mud-typography-default-family);
+    font-size: 16px;
+}
+
+.error-view {
+    display: block;
+    min-width: 100%;
+    max-height: 70vh;
+    min-height:30vh;
+    overflow:  auto;
+    white-space: pre;
+    background: var(--mud-palette-surface);
+    color: var(--mud-palette-text-primary);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 4px;
+    padding: 12px;
+    margin-bottom: 30px;
+    font-family: var(--mud-typography-default-family);
+    font-size: 16px;
+}
+
+@font-face {
+    font-family: 'Nunito';
+    src: url('/fonts/nunito/Nunito-VariableFont.ttf') format('truetype');
+    font-weight: 100 900;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Nunito';
+    src: url('/fonts/nunito/Nunito-Italic-VariableFont.ttf') format('truetype');
+    font-weight: 100 900;
+    font-style: italic;
+}
+
+@font-face {
+    font-family: 'Nunito Sans';
+    src: url('/fonts/nunito-sans/NunitoSans-VariableFont.ttf') format('truetype');
+    font-weight: 100 900;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Nunito Sans';
+    src: url('/fonts/nunito-sans/NunitoSans-Italic-VariableFont.ttf') format('truetype');
+    font-weight: 100 900;
+    font-style: italic;
+}
+
+body, button, input, textarea {
+    font-family: 'Nunito Sans', 'Calibri', 'Segoe UI', 'Arial', sans-serif;
+}
+
+#blazor-error-ui {
+    position: fixed;
+    bottom: 16px;
+    left: 0;
+    right: 0;
+    z-index: 1300;
+    display: none;
+    background: transparent;
+    box-shadow: none;
+    border: 0;
+    padding: 0 16px;
+}
+
+.blazor-error-container {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.mud-input-outlined .mud-input-outlined-border {
+    border-bottom-left-radius: 999px !important;
+    border-bottom-right-radius: 999px !important;
+    border-top-left-radius: 999px !important;
+    border-top-right-radius: 999px !important;
+}
+
+.custom-progressbar {
+    height: 2px !important;
+    margin-top: -1px !important;
+}
+
+.error-paper {
+    background-color: var(--mud-palette-error);
+    color: var(--mud-palette-error-text);
+}
+.device-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.device-card-content {
+    flex: 1 1 auto;
+    padding: 16px;
+    margin-bottom: 10px;
+}
+
+.device-card-actions {
+    padding: 0 16px 16px 16px;
+}
+
+.overview-card {
+    min-height: 220px;
+}
+
+.mud-tooltip {
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+}
+.custom-nav-menu {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+    .custom-nav-menu .version {
+        margin-top: auto;
+    }

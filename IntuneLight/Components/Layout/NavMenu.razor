@@ -1,0 +1,37 @@
+﻿@using IntuneLight.Helpers
+@using IntuneLight.Infrastructure
+@implements IDisposable
+@inject IConfiguration Configuration
+
+<MudNavMenu Class="custom-nav-menu">
+
+    <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.FlexStart" Class="ml-5 my-10">
+        <MudBadge Dot Color="Color.Success" Overlap="true">
+            <MudAvatar Color="Color.Dark" Size="Size.Medium">
+                <MudIcon Icon="@Icons.Material.Filled.SupportAgent" />
+            </MudAvatar>
+        </MudBadge>
+        <MudText Typo="Typo.subtitle1">Nils Solberg</MudText>
+    </MudStack>
+
+    <MudText Class="version ml-5 mb-5" Typo="Typo.subtitle1">
+        Versjon - @_version
+    </MudText>
+
+</MudNavMenu>
+
+
+@code
+{
+    private string _version = "ukjent";
+
+	protected override void OnInitialized()
+	{
+		_state.StateChanged += StateHasChanged;
+
+        // Read AppVersion from appsettings / Azure App Settings
+		_version = AppVersionHelper.GetUiVersion();
+	}
+
+    public void Dispose ()=> _state.StateChanged -= StateHasChanged;
+}
