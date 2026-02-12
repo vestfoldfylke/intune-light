@@ -1,4 +1,6 @@
-﻿using System.Net.Http.Headers;
+﻿using System.Net;
+using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json;
 using IntuneLight.Infrastructure;
 using IntuneLight.Models.Defender;
@@ -10,6 +12,7 @@ public interface IDefenderService
     Task<DefenderDevice?> GetDeviceByAadDeviceIdAsync(string aadDeviceId);
     Task<DefenderDevice?> GetDeviceByHostnameAsync(string hostname);
     Task<bool> GetIsolationStatusByMachineId(string machineId);
+    Task<DefenderScanResult> RunAntiVirusScanAsync(string machineId, DefenderScanType scanType, string? comment = null);
 }
 
 public sealed class DefenderService(IHttpClientFactory httpClientFactory, ITokenService tokenService, IApiResponseGuard guard) : IDefenderService
@@ -28,8 +31,11 @@ public sealed class DefenderService(IHttpClientFactory httpClientFactory, IToken
     public async Task<DefenderDevice?> GetDeviceByAadDeviceIdAsync(string aadDeviceId)
     {
         // Validate input
-        if (string.IsNullOrWhiteSpace(aadDeviceId))
-            throw new ArgumentException("AadDeviceId kan ikke være null eller en tom string.", nameof(aadDeviceId));
+        UiValidation.RequireNotNullOrWhiteSpace(
+            aadDeviceId,
+            nameof(aadDeviceId),
+            systemName: SystemNames.DefenderDevice,
+            userMessage: "Enhets-ID (AAD) kan ikke være tom.");
 
         // Create named HTTP client and fetch token
         var client = _httpClientFactory.CreateClient("Defender");
@@ -46,11 +52,12 @@ public sealed class DefenderService(IHttpClientFactory httpClientFactory, IToken
         var response = await client.GetAsync(url);
         var content = await response.Content.ReadAsStringAsync();
 
-        // Ensure success using ApiResponseGuard
-        _guard.EnsureSuccess(response, "Defender | Device", url, content);
+        // Ensure success or treat no-data as valid
+        if (!_guard.EnsureSuccessOrNoData(response, SystemNames.DefenderDevice, url, content))
+            return null;
 
         // Ensure JSON body
-        if (!_guard.EnsureJsonBody(content, "Defender | Device", url, (int)response.StatusCode))
+        if (!_guard.EnsureJsonBody(content, SystemNames.DefenderDevice, url, (int)response.StatusCode))
             return null;
 
         // Deserialize the response content
@@ -68,8 +75,11 @@ public sealed class DefenderService(IHttpClientFactory httpClientFactory, IToken
     public async Task<DefenderDevice?> GetDeviceByHostnameAsync(string hostname)
     {
         // Validate input
-        if (string.IsNullOrWhiteSpace(hostname))
-            throw new ArgumentException("Hostname kan ikke være null eller en tom string.", nameof(hostname));
+        UiValidation.RequireNotNullOrWhiteSpace(
+            hostname,
+            nameof(hostname),
+            systemName: SystemNames.DefenderDevice,
+            userMessage: "Maskinnavn kan ikke være tomt.");
 
         // Create named HTTP client and fetch token
         var client = _httpClientFactory.CreateClient("Defender");
@@ -88,11 +98,12 @@ public sealed class DefenderService(IHttpClientFactory httpClientFactory, IToken
         var response = await client.GetAsync(url);
         var content = await response.Content.ReadAsStringAsync();
 
-        // Ensure success using ApiResponseGuard
-        _guard.EnsureSuccess(response, "Defender | Device", url, content);
+        // Ensure success or treat no-data as valid
+        if (!_guard.EnsureSuccessOrNoData(response, SystemNames.DefenderDevice, url, content))
+            return null;
 
         // Ensure JSON body
-        if (!_guard.EnsureJsonBody(content, "Defender | Device", url, (int)response.StatusCode))
+        if (!_guard.EnsureJsonBody(content, SystemNames.DefenderDevice, url, (int)response.StatusCode))
             return null;
 
         // Deserialize the response content
@@ -110,8 +121,11 @@ public sealed class DefenderService(IHttpClientFactory httpClientFactory, IToken
     public async Task<bool> GetIsolationStatusByMachineId(string machineId)
     {
         // Validate input
-        if (string.IsNullOrWhiteSpace(machineId))
-            throw new ArgumentException("Machine ID kan ikke være null eller en tom string.", nameof(machineId));       
+        UiValidation.RequireNotNullOrWhiteSpace(
+            machineId,
+            nameof(machineId),
+            systemName: SystemNames.DefenderIsolation,
+            userMessage: "Maskin-ID kan ikke være tom.");
 
         // Create named HTTP client and fetch token
         var client = _httpClientFactory.CreateClient("Defender");
@@ -122,32 +136,75 @@ public sealed class DefenderService(IHttpClientFactory httpClientFactory, IToken
 
         // Build the request URL with the filter for machine-id
         var escaped = machineId.Replace("'", "''");
-        //var escaped = "4743f014-1ef6-4fd2-ae1b-fc78fefe1b72";
         var url = $"api/machineactions?$filter=type eq 'Isolate' and machineId eq '{escaped}'";
 
         // Send the GET request
         var response = await client.GetAsync(url);
         var content = await response.Content.ReadAsStringAsync();
 
-        // Ensure success using ApiResponseGuard
-        _guard.EnsureSuccess(response, "Defender | Device", url, content);
+        // Ensure success or treat no-data as valid
+        if (!_guard.EnsureSuccessOrNoData(response, SystemNames.DefenderIsolation, url, content))
+            return false;
 
         // Ensure JSON body
-        if (!_guard.EnsureJsonBody(content, "Defender | Isolate", url, (int)response.StatusCode))
+        if (!_guard.EnsureJsonBody(content, SystemNames.DefenderIsolation, url, (int)response.StatusCode))
             return false;
 
         // Deserialize the response content
         DefenderMachineActions? payload = JsonSerializer.Deserialize<DefenderMachineActions>(content, _jsonSerializerOptions);
 
         // Determine if the device is isolated
-        if (payload is not null)
-        {
-            return payload.Value.Any(a =>
-                a.Type == "Isolate" &&
-                a.Status == "Succeeded");
-        }
+        return payload?.Value?.Any(a => a.Type == "Isolate" && a.Status == "Succeeded") == true;
+    }
 
-        return false;
+    #endregion
+
+    #region Post requests
+
+    // Runs a Defender for Endpoint antivirus scan (quick or full) on a machine.
+    public async Task<DefenderScanResult> RunAntiVirusScanAsync(string machineId, DefenderScanType scanType, string? comment = null)
+    {
+        // Validate input
+        UiValidation.RequireNotNullOrWhiteSpace(
+            machineId,
+            nameof(machineId),
+            systemName: SystemNames.DefenderAvScan,
+            userMessage: "Machine ID kan ikke være tom.");
+
+        // Create named HTTP client and fetch token
+        var client = _httpClientFactory.CreateClient("Defender");
+        var token = await _tokenService.GetDefenderTokenAsync();
+
+        // Set the Authorization header with the Bearer token
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        // Build the request URL
+        var url = $"api/machines/{Uri.EscapeDataString(machineId)}/runAntiVirusScan";
+
+        // Build request body
+        var payload = new
+        {
+            Comment = string.IsNullOrWhiteSpace(comment) ? "Triggered from Intune Light." : comment,
+            ScanType = scanType.ToString()
+        };
+
+        // Serialize payload to JSON
+        var json = JsonSerializer.Serialize(payload, _jsonSerializerOptions);
+        using var httpContent = new StringContent(json, Encoding.UTF8, "application/json");
+
+        // Send the POST request
+        var response = await client.PostAsync(url, httpContent);
+        var content = await response.Content.ReadAsStringAsync();
+
+        // Handle "already in progress" explicitly (not an error)
+        if (response.StatusCode == HttpStatusCode.BadRequest && content.Contains("already in progress", StringComparison.OrdinalIgnoreCase))
+            return DefenderScanResult.AlreadyRunning;
+
+        // Ensure success (If successful, this method returns 201, Created response code and MachineAction object in the response body.)
+        _guard.EnsureSuccess(response, SystemNames.DefenderAvScan, url, content);
+
+        // If we reach here, the scan was started successfully
+        return DefenderScanResult.Started;
     }
 
     #endregion

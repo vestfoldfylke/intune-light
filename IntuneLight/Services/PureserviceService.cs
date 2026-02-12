@@ -29,8 +29,11 @@ public sealed class PureserviceService(IHttpClientFactory httpClientFactory, ITo
     public async Task<PureserviceUser?> GetUserByEmailAsync(string email)
     {
         // Validate input
-        if (string.IsNullOrWhiteSpace(email))
-            throw new ArgumentException("Email kan ikke være null eller en tom string.", nameof(email));
+        UiValidation.RequireNotNullOrWhiteSpace(
+            email,
+            nameof(email),
+            systemName: SystemNames.PureServiceUser,
+            userMessage: "E-post kan ikke være tom.");
 
         // Create named HTTP client
         var client = _httpClientFactory.CreateClient("Pureservice");
@@ -51,11 +54,12 @@ public sealed class PureserviceService(IHttpClientFactory httpClientFactory, ITo
         var response = await client.GetAsync(url);
         var content = await response.Content.ReadAsStringAsync();
 
-        // Ensure success using ApiResponseGuard
-        _guard.EnsureSuccess(response, "Pureservice | User", url, content);
+        // Ensure success or treat no-data as valid (404/204)
+        if (!_guard.EnsureSuccessOrNoData(response, SystemNames.PureServiceUser, url, content))
+            return null;
 
         // Ensure JSON body
-        if (!_guard.EnsureJsonBody(content, "Pureservice | User", url, (int)response.StatusCode))
+        if (!_guard.EnsureJsonBody(content, SystemNames.PureServiceUser, url, (int)response.StatusCode))
             return null;
 
         // Deserialize response and return first user found
@@ -73,8 +77,12 @@ public sealed class PureserviceService(IHttpClientFactory httpClientFactory, ITo
     public async Task<PureserviceTicket?> GetTicketByRequestNumberAsync(string requestNumber)
     {
         // Validate input
-        if (string.IsNullOrWhiteSpace(requestNumber))
-            throw new ArgumentException("Ticket nummer kan ikke være null eller en tom string.", nameof(requestNumber));
+        UiValidation.RequireNotNullOrWhiteSpace(
+            requestNumber,
+            nameof(requestNumber),
+            systemName: SystemNames.PureServiceTicket,
+            userMessage: "Saksnummer kan ikke være tomt.");
+
 
         // Create named HTTP client
         var client = _httpClientFactory.CreateClient("Pureservice");
@@ -94,11 +102,12 @@ public sealed class PureserviceService(IHttpClientFactory httpClientFactory, ITo
         var response = await client.GetAsync(url);
         var content = await response.Content.ReadAsStringAsync();
 
-        // Ensure success using ApiResponseGuard
-        _guard.EnsureSuccess(response, "Pureservice | Ticket", url, content);
+        // Ensure success or treat no-data as valid (404/204)
+        if (!_guard.EnsureSuccessOrNoData(response, SystemNames.PureServiceTicket, url, content))
+            return null;
 
         // Ensure JSON body
-        if (!_guard.EnsureJsonBody(content, "Pureservice | Ticket", url, (int)response.StatusCode))
+        if (!_guard.EnsureJsonBody(content, SystemNames.PureServiceTicket, url, (int)response.StatusCode))
             return null;
 
         // Deserialize response and return ticket
@@ -116,8 +125,11 @@ public sealed class PureserviceService(IHttpClientFactory httpClientFactory, ITo
     public async Task<PureserviceAsset?> GetAssetBySerialAsync(string serialNumber)
     {
         // Validate input
-        if (string.IsNullOrWhiteSpace(serialNumber))
-            throw new ArgumentException("Serienummer kan ikke være null eller en tom string.", nameof(serialNumber));
+        UiValidation.RequireNotNullOrWhiteSpace(
+            serialNumber,
+            nameof(serialNumber),
+            systemName: SystemNames.PureServiceDevice,
+            userMessage: "Serienummer kan ikke være tomt.");
 
         // Create named HTTP client
         var client = _httpClientFactory.CreateClient("Pureservice");
@@ -138,11 +150,12 @@ public sealed class PureserviceService(IHttpClientFactory httpClientFactory, ITo
         var searchResponse = await client.GetAsync(searchUrl);
         var searchContent = await searchResponse.Content.ReadAsStringAsync();
 
-        // Ensure success using ApiResponseGuard
-        _guard.EnsureSuccess(searchResponse, "Pureservice | Asset", searchUrl, searchContent);
+        // Ensure success or treat no-data as valid (404/204)
+        if (!_guard.EnsureSuccessOrNoData(searchResponse, SystemNames.PureServiceDevice, searchUrl, searchContent))
+            return null;
 
         // Ensure JSON body
-        if (!_guard.EnsureJsonBody(searchContent, "Pureservice | Asset", searchUrl, (int)searchResponse.StatusCode))
+        if (!_guard.EnsureJsonBody(searchContent, SystemNames.PureServiceDevice, searchUrl, (int)searchResponse.StatusCode))
             return null;
 
         // Deserialize search response
@@ -162,11 +175,12 @@ public sealed class PureserviceService(IHttpClientFactory httpClientFactory, ITo
         var assetResponse = await client.GetAsync(assetUrl);
         var assetContent = await assetResponse.Content.ReadAsStringAsync();
 
-        // Ensure success using ApiResponseGuard
-        _guard.EnsureSuccess(assetResponse, "Pureservice | Asset", assetUrl, assetContent);
+        // Ensure success or treat no-data as valid (404/204)
+        if (!_guard.EnsureSuccessOrNoData(assetResponse, SystemNames.PureServiceDevice, assetUrl, assetContent))
+            return null;
 
         // Ensure JSON body
-        if (!_guard.EnsureJsonBody(assetContent, "Pureservice | Asset", assetUrl, (int)assetResponse.StatusCode))
+        if (!_guard.EnsureJsonBody(assetContent, SystemNames.PureServiceDevice, assetUrl, (int)assetResponse.StatusCode))
             return null;
 
         // Deserialize full asset response
@@ -188,8 +202,11 @@ public sealed class PureserviceService(IHttpClientFactory httpClientFactory, ITo
     public async Task<PureserviceRelationshipSearchResponse?> GetRelationshipsByAssetIdAsync(string assetId)
     {
         // Validate input
-        if (string.IsNullOrWhiteSpace(assetId))
-            throw new ArgumentException("Resurs-id kan ikke være null eller en tom string.", nameof(assetId));
+        UiValidation.RequireNotNullOrWhiteSpace(
+            assetId,
+            nameof(assetId),
+            systemName: SystemNames.PureServiceRelationship,
+            userMessage: "Resurs-id kan ikke være tomt.");
 
         // Create named HTTP client
         var client = _httpClientFactory.CreateClient("Pureservice");
@@ -219,11 +236,12 @@ public sealed class PureserviceService(IHttpClientFactory httpClientFactory, ITo
         var response = await client.GetAsync(url);
         var content = await response.Content.ReadAsStringAsync();
 
-        // Ensure success using ApiResponseGuard
-        _guard.EnsureSuccess(response, "Pureservice | Relationship", url, content);
+        // Ensure success or treat no-data as valid (404/204)
+        if (!_guard.EnsureSuccessOrNoData(response, SystemNames.PureServiceRelationship, url, content))
+            return null;
 
         // Ensure JSON body
-        if (!_guard.EnsureJsonBody(content, "Pureservice | Relationship", url, (int)response.StatusCode))
+        if (!_guard.EnsureJsonBody(content, SystemNames.PureServiceRelationship, url, (int)response.StatusCode))
             return null;
 
         // Deserialize response

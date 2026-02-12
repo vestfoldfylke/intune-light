@@ -73,7 +73,7 @@
         _state.IsDarkMode = cookie == "true";
 
 		// Set pureservice ticket url from options
-        _state.SetPureserviceTicketAddress(_psOptions.Value.TicketAddress);
+		_state.PureserviceTicketAddress = _psOptions.Value.TicketAddress;
         
         base.OnInitialized();
     }
@@ -115,7 +115,7 @@
             Success = "#1F9562",                // Gress 100 %
             Warning = "#BC7726",                // Siv 100 %
             Error = "#B7173D",                  // Nype 100 %
-            Info = "#1C6C6C",                   // Hav 100 %
+            Info = "#009BC2",                   // Himmel 100%
 
             Divider = "#DDDDDD"
         },
@@ -123,34 +123,34 @@
         // DARK THEME
         PaletteDark = new PaletteDark
         {
-            // Brand accent colors
-            Primary = "#4CB9D4",                // Himmel 70 %
-            Secondary = "#5AA7AE",              // Fjord 70 %
-            Tertiary = "#8B6D90",               // Plomme 70 %
+            // DARK – accent colors
+            Primary = "#9ADCEB",               // Himmel ~ 65 %  (lys, tydelig, action/links)
+            Secondary = "#7FD3E3",             // Himmel/Fjord ~ 55 % (sekundær, roligere)
+            Tertiary = "#B59BC0",              // Plomme ~ 55 %
 
             // Status colors
-            Success = "#62B591",                // Gress 70 %
-            Warning = "#D0A067",                // Siv 70 %
-            Error = "#CD5D77",                  // Nype 70 %
-            Info = "#609898",                   // Hav 70 %
+            Success = "#3FA884",                // Gress ~ 55 %
+            Warning = "#B8833A",                // Siv ~ 55 %
+            Error = "#B64B66",                  // Nype ~ 55 %
+            Info = "#3FA1B8",                   // Himmel ~ 55 %
 
-            // UI-SURFACE-COLORS
-            AppbarBackground = "#1F2528",       // dark blue tone – used as dark "Vann"-equivalent
-            AppbarText = Colors.Shades.White,
+            // Appbar / navigation
+            AppbarBackground = "#172126",       // Vann (Dark base) ~ 90 %
+            AppbarText = "#D7DEE3",             // Stein lys ~ 85 %
 
-            // Surfaces
-            Background = "#1C1F22",             // standard dark bg (Material baseline), litt lysere enn (#121212)
-            Surface = "#262A2E",                // card/panel (Material baseline + mild blue/graphite toning), litt lysere enn (#1E1E20)
-            DrawerBackground = "#1B1E21",       // darker surface for nav/drawer
+            // Surfaces (light-dark)
+            Background = "#1E262B",             // Dark base (not near-black)
+            Surface = "#2A343B",                // Card/panel (clearly lighter)
+            DrawerBackground = "#182025",       // Slightly deeper than bg
 
-            // Text
-            TextPrimary = "#E6EBEE",
-            TextSecondary = "#9AA3AA",          // litt mer dempet enn (Colors.Gray.Lighten1)
+            // Text (soft contrast, less glare)
+            TextPrimary = "#D7DEE3",            // Stein lys ~ 85 %
+            TextSecondary = "#AEBAC2",          // Stein lys ~ 70 %
 
-            // Icons/divider
-            DrawerText = "#C6CCD1",
-            DrawerIcon = "#AEB6BC",
-            Divider = "#343A3F"
+            // Icons / divider
+            DrawerText = "#C9D2D8",             // ~ 80 %
+            DrawerIcon = "#9EABB3",             // ~ 65 %
+            Divider = "#3A4851"                 // subtle but visible
         },
 
         // TYPOGRAPHY

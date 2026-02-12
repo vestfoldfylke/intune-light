@@ -23,3 +23,17 @@ public sealed class DefenderMachineAction
     public DateTime? LastUpdateDateTimeUtc { get; set; }
     public DateTime? CancellationDateTimeUtc { get; set; }
 }
+
+// Types of Defender scans.
+public enum DefenderScanType
+{
+    Quick,
+    Full
+}
+
+// Result of attempting to start a Defender scan.
+public enum DefenderScanResult
+{
+    Started,
+    AlreadyRunning
+}

@@ -9,6 +9,8 @@ namespace IntuneLight.Services.State;
 // Holds the current device lookup context and results across pages/components.
 public sealed class DeviceLookupState
 {
+    #region Props
+
     private bool _isDarkMode;
     private bool _isFetching;
     private bool _hasSearched;
@@ -38,7 +40,18 @@ public sealed class DeviceLookupState
     public string SearchSerial
     {
         get => _searchSerial;
-        set { if (_searchSerial == value) return; _searchSerial = value.Trim(); NotifyStateChanged(); }
+        set
+        {
+            var normalized = NormalizeSerial(value);
+
+            if (_searchSerial == normalized)
+                return;
+
+            _searchSerial = normalized;
+            SearchSerialError = GetSerialError(_searchSerial);
+
+            NotifyStateChanged();
+        }
     }
 
     public bool IsIsolated
@@ -48,21 +61,27 @@ public sealed class DeviceLookupState
     }
 
     // Results
-    public ManagedDevice? ManagedDevice { get; private set; }
-    public DefenderDevice? DefenderDevice { get; private set; }
-    public EntraUser? EntraUser { get; private set; }
-    public EntraDevice? EntraDevice { get; private set; }
-    public AutopilotDevice? AutopilotDevice { get; private set; }
-    public DeviceCredential? DeviceCredential { get; private set; }
-    public BitlockerRecoveryKey? BitlockerRecoveryKey { get; private set; }
-    public PureserviceUser? PureserviceUser { get; private set; }
-    public PureserviceTicket? PureserviceTicket { get; private set; }
-    public PureserviceAsset? PureserviceAssetBySn { get; private set; }
-    public PureserviceRelationshipSearchResponse? PureserviceRelationships { get; private set; }
-    public string PureserviceTicketAddress { get; private set; } = string.Empty;
-    public byte[]? EntraUserPhoto { get; private set; }
+    public ManagedDevice? ManagedDevice { get; set; }
+    public DefenderDevice? DefenderDevice { get; set; }
+    public EntraUser? EntraUser { get; set; }
+    public EntraDevice? EntraDevice { get; set; }
+    public AutopilotDevice? AutopilotDevice { get; set; }
+    public DeviceCredential? DeviceCredential { get; set; }
+    public BitlockerRecoveryKey? BitlockerRecoveryKey { get; set; }
+    public PureserviceUser? PureserviceUser { get; set; }
+    public PureserviceTicket? PureserviceTicket { get; set; }
+    public PureserviceAsset? PureserviceAssetBySn { get; set; }
+    public PureserviceRelationshipSearchResponse? PureserviceRelationships { get; set; }
+    public string PureserviceTicketAddress { get; set; } = string.Empty;
+    public byte[]? EntraUserPhoto { get; set; }
     public int? UserDeviceCount { get; set; }
     public string? ClientIpAddress { get; set; }
+    public EntraDeviceCount?  EntraDeviceCount { get; set; }
+    public HashSet<string> LapsRotationLockedDevices { get; } = [];
+
+    #endregion
+
+    #region Clear
 
     // Clears all results for a new lookup while keeping UI flags optional.
     public void ClearResults(bool keepSearchSerial = true)
@@ -84,9 +103,14 @@ public sealed class DeviceLookupState
         EntraUserPhoto = null;
         UserDeviceCount = null;
         IsIsolated = false;
+        EntraDeviceCount = null;
 
         NotifyStateChanged();
     }
+
+    #endregion
+
+    #region Set
 
     // Sets all lookup results in one call to avoid UI repaint spam.
     public void SetResults(DeviceLookupResults results)
@@ -105,21 +129,57 @@ public sealed class DeviceLookupState
         EntraUserPhoto = results.EntraUserPhoto;
         UserDeviceCount = results.UserDeviceCount;
         IsIsolated = results.IsIsolated;
+        EntraDeviceCount = results.EntraDeviceCount;
 
         NotifyStateChanged();
     }
 
-    public void SetPureserviceTicketAddress(string address)
-    {
-        PureserviceTicketAddress = address ?? string.Empty;
-        NotifyStateChanged();
-    }
+    #endregion
 
-    public void SetClientIpAddress(string address)
-    {
-        ClientIpAddress = address ?? string.Empty;
-        NotifyStateChanged();
-    }
-
+    #region State changed
     private void NotifyStateChanged() => StateChanged?.Invoke();
+    public void Touch() => NotifyStateChanged();
+
+    #endregion
+
+    #region Validation
+
+    public string SearchSerialError { get; private set; } = string.Empty;
+    public bool IsSearchSerialValid => string.IsNullOrEmpty(SearchSerialError);
+
+    // Normalizes a serial number for lookup (trim + uppercase + remove spaces).
+    private static string NormalizeSerial(string? input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+            return string.Empty;
+
+        return input.Trim()
+                    .Replace(" ", string.Empty) // remove pasted spaces
+                    .ToUpperInvariant();
+    }
+
+    // Validates allowed serial number characters (A-Z, 0-9, '-'), and length bounds.
+    private static string GetSerialError(string serial)
+    {
+        if (string.IsNullOrWhiteSpace(serial))
+            return "Serienummer mangler.";
+
+        if (serial.Length is < 3 or > 40)
+            return "Serienummer har ugyldig lengde.";
+
+        foreach (var c in serial)
+        {
+            // Allow only letters/digits and hyphen
+            if (!(char.IsLetterOrDigit(c) || c == '-'))
+                return "Serienummer kan kun inneholde bokstaver, tall og bindestrek.";
+        }
+
+        // avoid only hyphens
+        if (serial.All(c => c == '-'))
+            return "Serienummer er ugyldig.";
+
+        return string.Empty;
+    }
+
+    #endregion
 }

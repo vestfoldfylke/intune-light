@@ -7,6 +7,7 @@ public interface IApiResponseGuard
     bool EnsureBinaryBody(byte[] content, string systemName, string url, int statusCode);
     bool EnsureJsonBody(string body, string systemName, string url, int statusCode);
     void EnsureSuccess(HttpResponseMessage response, string systemName, string url, string body);
+    bool EnsureSuccessOrNoData(HttpResponseMessage response, string systemName, string url, string body);
 }
 
 // Guards API responses and throws structured exceptions on failure.
@@ -14,7 +15,7 @@ public class ApiResponseGuard(ILogger<ApiResponseGuard> logger) : IApiResponseGu
 {
     private readonly ILogger<ApiResponseGuard> _logger = logger;
 
-    // Throws ApiException with structured metadata if response is not successful.
+    // Throws an ApiException for non-success HTTP responses (4xx/5xx).
     public void EnsureSuccess(HttpResponseMessage response, string systemName, string url, string body)
     {
         // If the response indicates success, simply return
@@ -43,8 +44,28 @@ public class ApiResponseGuard(ILogger<ApiResponseGuard> logger) : IApiResponseGu
         throw new ApiException(info);
     }
 
-    // Ensures the response body contains JSON when the call succeeded.
-    // Returns false when the body is empty (no data), without throwing.
+    // Ensures the response is successful or represents valid "no data".
+    public bool EnsureSuccessOrNoData(HttpResponseMessage response, string systemName, string url, string body)
+    {
+        // Treat these as "no data" in search/enrichment flows
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound ||
+            response.StatusCode == System.Net.HttpStatusCode.NoContent)
+        {
+            _logger.LogInformation(
+                "API call to {System} returned no data. Status {StatusCode}. Url: {Url}.",
+                systemName,
+                (int)response.StatusCode,
+                url);
+
+            return false; // Caller should return null without UI noise
+        }
+
+        // All other non-success are real errors
+        EnsureSuccess(response, systemName, url, body); // Throws ApiException
+        return true;
+    }
+
+    /// Ensures a successful response contains a JSON body.
     public bool EnsureJsonBody(string body, string systemName, string url, int statusCode)
     {
         // Body exists → OK
@@ -60,8 +81,7 @@ public class ApiResponseGuard(ILogger<ApiResponseGuard> logger) : IApiResponseGu
         return false;
     }
 
-
-    // Returns false when a successful response contains no binary content.
+    // Ensures a successful response contains binary content.
     public bool EnsureBinaryBody(byte[] content, string systemName, string url, int statusCode)
     {
         // Content exists → OK
