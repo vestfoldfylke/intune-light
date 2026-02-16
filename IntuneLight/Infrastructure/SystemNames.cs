@@ -2,10 +2,10 @@
 
 public static class SystemNames
 {
-    public const string PureServiceUser = "PureService | Bruker";
-    public const string PureServiceTicket = "PureService | Ticket";
-    public const string PureServiceDevice = "PureService | Resurs";
-    public const string PureServiceRelationship = "PureService | Relasjon";
+    public const string PureserviceUser = "Pureservice | Bruker";
+    public const string PureserviceTicket = "Pureservice | Sak";
+    public const string PureserviceDevice = "Pureservice | Resurs";
+    public const string PureserviceRelationship = "Pureservice | Relasjon";
 
     public const string EntraDevice = "Entra | Enhet";
     public const string EntraDeviceDelete = "Entra | Slett enhet";

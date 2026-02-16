@@ -32,7 +32,7 @@ public sealed class PureserviceService(IHttpClientFactory httpClientFactory, ITo
         UiValidation.RequireNotNullOrWhiteSpace(
             email,
             nameof(email),
-            systemName: SystemNames.PureServiceUser,
+            systemName: SystemNames.PureserviceUser,
             userMessage: "E-post kan ikke være tom.");
 
         // Create named HTTP client
@@ -55,11 +55,11 @@ public sealed class PureserviceService(IHttpClientFactory httpClientFactory, ITo
         var content = await response.Content.ReadAsStringAsync();
 
         // Ensure success or treat no-data as valid (404/204)
-        if (!_guard.EnsureSuccessOrNoData(response, SystemNames.PureServiceUser, url, content))
+        if (!_guard.EnsureSuccessOrNoData(response, SystemNames.PureserviceUser, url, content))
             return null;
 
         // Ensure JSON body
-        if (!_guard.EnsureJsonBody(content, SystemNames.PureServiceUser, url, (int)response.StatusCode))
+        if (!_guard.EnsureJsonBody(content, SystemNames.PureserviceUser, url, (int)response.StatusCode))
             return null;
 
         // Deserialize response and return first user found
@@ -80,7 +80,7 @@ public sealed class PureserviceService(IHttpClientFactory httpClientFactory, ITo
         UiValidation.RequireNotNullOrWhiteSpace(
             requestNumber,
             nameof(requestNumber),
-            systemName: SystemNames.PureServiceTicket,
+            systemName: SystemNames.PureserviceTicket,
             userMessage: "Saksnummer kan ikke være tomt.");
 
 
@@ -103,11 +103,11 @@ public sealed class PureserviceService(IHttpClientFactory httpClientFactory, ITo
         var content = await response.Content.ReadAsStringAsync();
 
         // Ensure success or treat no-data as valid (404/204)
-        if (!_guard.EnsureSuccessOrNoData(response, SystemNames.PureServiceTicket, url, content))
+        if (!_guard.EnsureSuccessOrNoData(response, SystemNames.PureserviceTicket, url, content))
             return null;
 
         // Ensure JSON body
-        if (!_guard.EnsureJsonBody(content, SystemNames.PureServiceTicket, url, (int)response.StatusCode))
+        if (!_guard.EnsureJsonBody(content, SystemNames.PureserviceTicket, url, (int)response.StatusCode))
             return null;
 
         // Deserialize response and return ticket
@@ -128,7 +128,7 @@ public sealed class PureserviceService(IHttpClientFactory httpClientFactory, ITo
         UiValidation.RequireNotNullOrWhiteSpace(
             serialNumber,
             nameof(serialNumber),
-            systemName: SystemNames.PureServiceDevice,
+            systemName: SystemNames.PureserviceDevice,
             userMessage: "Serienummer kan ikke være tomt.");
 
         // Create named HTTP client
@@ -151,11 +151,11 @@ public sealed class PureserviceService(IHttpClientFactory httpClientFactory, ITo
         var searchContent = await searchResponse.Content.ReadAsStringAsync();
 
         // Ensure success or treat no-data as valid (404/204)
-        if (!_guard.EnsureSuccessOrNoData(searchResponse, SystemNames.PureServiceDevice, searchUrl, searchContent))
+        if (!_guard.EnsureSuccessOrNoData(searchResponse, SystemNames.PureserviceDevice, searchUrl, searchContent))
             return null;
 
         // Ensure JSON body
-        if (!_guard.EnsureJsonBody(searchContent, SystemNames.PureServiceDevice, searchUrl, (int)searchResponse.StatusCode))
+        if (!_guard.EnsureJsonBody(searchContent, SystemNames.PureserviceDevice, searchUrl, (int)searchResponse.StatusCode))
             return null;
 
         // Deserialize search response
@@ -176,11 +176,11 @@ public sealed class PureserviceService(IHttpClientFactory httpClientFactory, ITo
         var assetContent = await assetResponse.Content.ReadAsStringAsync();
 
         // Ensure success or treat no-data as valid (404/204)
-        if (!_guard.EnsureSuccessOrNoData(assetResponse, SystemNames.PureServiceDevice, assetUrl, assetContent))
+        if (!_guard.EnsureSuccessOrNoData(assetResponse, SystemNames.PureserviceDevice, assetUrl, assetContent))
             return null;
 
         // Ensure JSON body
-        if (!_guard.EnsureJsonBody(assetContent, SystemNames.PureServiceDevice, assetUrl, (int)assetResponse.StatusCode))
+        if (!_guard.EnsureJsonBody(assetContent, SystemNames.PureserviceDevice, assetUrl, (int)assetResponse.StatusCode))
             return null;
 
         // Deserialize full asset response
@@ -205,7 +205,7 @@ public sealed class PureserviceService(IHttpClientFactory httpClientFactory, ITo
         UiValidation.RequireNotNullOrWhiteSpace(
             assetId,
             nameof(assetId),
-            systemName: SystemNames.PureServiceRelationship,
+            systemName: SystemNames.PureserviceRelationship,
             userMessage: "Resurs-id kan ikke være tomt.");
 
         // Create named HTTP client
@@ -237,11 +237,11 @@ public sealed class PureserviceService(IHttpClientFactory httpClientFactory, ITo
         var content = await response.Content.ReadAsStringAsync();
 
         // Ensure success or treat no-data as valid (404/204)
-        if (!_guard.EnsureSuccessOrNoData(response, SystemNames.PureServiceRelationship, url, content))
+        if (!_guard.EnsureSuccessOrNoData(response, SystemNames.PureserviceRelationship, url, content))
             return null;
 
         // Ensure JSON body
-        if (!_guard.EnsureJsonBody(content, SystemNames.PureServiceRelationship, url, (int)response.StatusCode))
+        if (!_guard.EnsureJsonBody(content, SystemNames.PureserviceRelationship, url, (int)response.StatusCode))
             return null;
 
         // Deserialize response
