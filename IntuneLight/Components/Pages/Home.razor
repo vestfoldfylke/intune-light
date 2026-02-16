@@ -959,7 +959,7 @@
                                     </MudItem>
                                     <MudItem xs="8">
                                         <MudText Typo="Typo.body2">
-                                            @UiFormat.TextOrFallback(_state.PureserviceTicket.Description, "ingen beskrivelse")
+                                            @HtmlSanitizerHelper.ToSafeMarkup(_state.PureserviceTicket.Description ?? "ingen beskrivelse")
                                         </MudText>
                                     </MudItem>
                                 </MudGrid>

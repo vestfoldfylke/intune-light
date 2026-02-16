@@ -2,7 +2,6 @@
 using IntuneLight.Helpers;
 using IntuneLight.Infrastructure;
 using IntuneLight.Models.Defender;
-using IntuneLight.Models.Intune;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 
