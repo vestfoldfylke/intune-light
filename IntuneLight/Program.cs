@@ -4,6 +4,7 @@ using IntuneLight.Models.Options;
 using IntuneLight.Services;
 using IntuneLight.Services.State;
 using Microsoft.Extensions.Options;
+using MudBlazor;
 using MudBlazor.Services;
 using Serilog;
 using Vestfold.Extensions.Logging;
@@ -17,7 +18,19 @@ builder.Logging.AddVestfoldLogging();
 builder.Configuration.AddEnvironmentVariables();
 
 // Add MudBlazor services
-builder.Services.AddMudServices();
+builder.Services.AddMudServices(config =>
+{
+    config.SnackbarConfiguration.PositionClass = Defaults.Classes.Position.TopRight;
+
+    config.SnackbarConfiguration.PreventDuplicates = false;
+    config.SnackbarConfiguration.NewestOnTop = false;
+    config.SnackbarConfiguration.ShowCloseIcon = true;
+    config.SnackbarConfiguration.VisibleStateDuration = 3000;
+    config.SnackbarConfiguration.HideTransitionDuration = 1000;
+    config.SnackbarConfiguration.ShowTransitionDuration = 1000;
+    config.SnackbarConfiguration.SnackbarVariant = Variant.Filled;
+    config.SnackbarConfiguration.MaxDisplayedSnackbars = 10;
+});
 
 // Add services to the container.
 builder.Services.AddRazorComponents()

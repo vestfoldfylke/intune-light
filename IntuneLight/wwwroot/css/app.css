@@ -10,7 +10,7 @@
     border: 1px solid var(--mud-palette-lines-default);
     border-radius: 4px;
     padding: 12px;
-    margin-bottom:30px;
+    margin-bottom: 30px;
     font-family: var(--mud-typography-default-family);
     font-size: 16px;
 }
@@ -19,8 +19,8 @@
     display: block;
     min-width: 100%;
     max-height: 70vh;
-    min-height:30vh;
-    overflow:  auto;
+    min-height: 30vh;
+    overflow: auto;
     white-space: pre;
     background: var(--mud-palette-surface);
     color: var(--mud-palette-text-primary);
@@ -98,24 +98,31 @@ body, button, input, textarea {
     background-color: var(--mud-palette-error);
     color: var(--mud-palette-error-text);
 }
+
 .device-card {
     height: 100%;
     display: flex;
     flex-direction: column;
 }
 
+.device-card-topbar {
+    height: 60px;
+}
+
 .device-card-content {
     flex: 1 1 auto;
-    padding: 16px;
-    margin-bottom: 10px;
 }
 
 .device-card-actions {
-    padding: 0 16px 16px 16px;
+    padding: 15px 0px 15px 10px;
 }
 
 .overview-card {
     min-height: 220px;
+}
+
+.overview-card-header {
+    min-height: 47px;
 }
 
 .mud-tooltip {
@@ -124,6 +131,7 @@ body, button, input, textarea {
     padding: 0 !important;
     border-radius: 50% !important;
 }
+
 .custom-nav-menu {
     display: flex;
     flex-direction: column;
@@ -133,3 +141,25 @@ body, button, input, textarea {
     .custom-nav-menu .version {
         margin-top: auto;
     }
+
+.w-100 {
+    width:100% !important;
+}
+
+.menu-activator {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.menu-spinner {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    pointer-events: none;
+}
+
+.preserve-linebreaks {
+    white-space: pre-line;
+}

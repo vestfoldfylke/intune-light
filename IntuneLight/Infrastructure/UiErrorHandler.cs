@@ -21,19 +21,6 @@ public sealed class UiErrorHandler(IDialogService dialogs, ISnackbar snackbar, I
         // ApiExceptions are handled in ApiResponseGuard
         if (exception is ApiException apiEx)
         {
-            // 2xx + empty body = informational, not a technical failure
-            if (apiEx.ErrorInfo.Kind == ApiErrorKind.SuccessButEmptyBody)
-            {
-                var info = apiEx.ErrorInfo;
-
-                _snackbar.Add(
-                    $"Ingen data funnet fra {info.SystemName} (status {info.StatusCode}).",
-                    Severity.Info,
-                    conf => conf.RequireInteraction = true);
-
-                return;
-            }
-
             // Aleady logged in ApiResonseGuard
             await ShowApiErrorDialogAsync(apiEx.ErrorInfo);
             return;
@@ -50,8 +37,16 @@ public sealed class UiErrorHandler(IDialogService dialogs, ISnackbar snackbar, I
         // ArgumentExceptions are considered validation errors from UI flow
         if (exception is ArgumentException argEx)
         {
-            _log.LogWarning(argEx, "Validation error in UI flow.");
+            _log.LogWarning(argEx, "Valideringsfeil i UI flow.");
             _snackbar.Add(argEx.Message, Severity.Warning, conf => conf.RequireInteraction = true);
+            return;
+        }
+
+        // UiValidationExceptions are considered validation errors from UI flow
+        if (exception is UiValidationException valEx)
+        {
+            _log.LogWarning(exception, "Validation error in UI flow. System: {System}", valEx.SystemName);
+            _snackbar.Add($"{valEx.SystemName}: {valEx.Message}", Severity.Warning, conf => conf.RequireInteraction = true);
             return;
         }
 
@@ -79,4 +74,6 @@ public sealed class UiErrorHandler(IDialogService dialogs, ISnackbar snackbar, I
 
         await _dialogs.ShowAsync<ApiErrorDialog>("Teknisk informasjon", parameters, options);
     }
+
+
 }

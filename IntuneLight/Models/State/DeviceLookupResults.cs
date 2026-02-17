@@ -22,4 +22,5 @@ public sealed class DeviceLookupResults
     public byte[]? EntraUserPhoto { get; set; }
     public int? UserDeviceCount { get; set; }
     public bool IsIsolated { get; set; }
+    public EntraDeviceCount? EntraDeviceCount { get; set; }
 }

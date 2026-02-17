@@ -1,10 +1,10 @@
 ﻿@using IntuneLight.Helpers
 @using MudBlazor
 
-<MudDialog DefaultFocus="DefaultFocus.None" ActionsClass="ma-3">
+<MudDialog DefaultFocus="DefaultFocus.None" ActionsClass="ma-3" TitleClass="my-2">
     <DialogContent>
 
-        <MudStack Spacing="5">
+        <MudStack Spacing="5" Class="mb-4">
             <MudSelect T="string"
                        Label="Autopilot-profil"
                        @bind-Value="_selectedTag"
@@ -26,17 +26,23 @@
                     <MudSelectItem Value="@item.Value">@item.Key</MudSelectItem>
                 }
             </MudSelect>
+            <MudTextField Value="@_finalTag" Label="Valgt tag" ReadOnly=true/>
         </MudStack>
-
+        <MudText Typo="Typo.body2" Class="preserve-linebreaks mt-2">
+            Endringen av Autopilot gruppe‑tag kan ta litt tid før den vises.
+            Du kan trykke «Oppdater» via innstillinger‑ikonet for å hente ferske data
+            (typisk 30 sekunder til noen minutter).
+        </MudText>
     </DialogContent>
 
     <DialogActions>
         <MudButton Variant="Variant.Text" OnClick="Cancel">Avbryt</MudButton>
 
         <MudButton Variant="Variant.Filled"
-                    Disabled="@IsSaveDisabled"
-                    OnClick="Save">
-            Velg
+                   Disabled="@IsSaveDisabled"
+                   Color="Color.Secondary"
+                   OnClick="Save">
+            Bekreft
         </MudButton>
     </DialogActions>
 </MudDialog>
@@ -47,9 +53,9 @@
 
     private string _selectedTag = string.Empty;
     private string _selectedLocationSuffix = string.Empty;
+    private string _finalTag => AutopilotTagHelper.BuildFinalTag(_selectedTag, _selectedLocationSuffix);
 
-    private bool IsSaveDisabled =>
-        string.IsNullOrWhiteSpace(_selectedTag) || string.IsNullOrWhiteSpace(_selectedLocationSuffix);
+    private bool IsSaveDisabled => string.IsNullOrWhiteSpace(_selectedTag) || string.IsNullOrWhiteSpace(_selectedLocationSuffix);
 
     private void Cancel()
     {

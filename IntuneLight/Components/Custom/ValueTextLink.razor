@@ -1,0 +1,24 @@
+﻿@using IntuneLight.Helpers
+@using MudBlazor
+
+<MudText Typo="@Typo">
+    @if (IsLink && !string.IsNullOrWhiteSpace(Text))
+    {
+        <MudLink OnClick="@OnClick" Color="Color.Secondary" Underline="Underline.Hover" Typo="@Typo">
+            @Text
+        </MudLink>
+    }
+    else
+    {
+        @UiFormat.TextOrFallback(Text, Fallback)
+    }
+</MudText>
+
+@code
+{
+    [Parameter] public string? Text { get; set; }
+    [Parameter] public bool IsLink { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+    [Parameter] public Typo Typo { get; set; } = Typo.body2;
+    [Parameter] public string Fallback { get; set; } = "ukjent";
+}
