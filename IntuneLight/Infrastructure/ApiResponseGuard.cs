@@ -1,4 +1,6 @@
-﻿using IntuneLight.Models.ApiError;
+﻿using System.Collections.Frozen;
+using IntuneLight.Models.ApiError;
+using Vestfold.Extensions.Metrics.Services;
 
 namespace IntuneLight.Infrastructure;
 
@@ -11,16 +13,44 @@ public interface IApiResponseGuard
 }
 
 // Guards API responses and throws structured exceptions on failure.
-public class ApiResponseGuard(ILogger<ApiResponseGuard> logger) : IApiResponseGuard
+public class ApiResponseGuard(ILogger<ApiResponseGuard> logger, IMetricsService metricsService) : IApiResponseGuard
 {
     private readonly ILogger<ApiResponseGuard> _logger = logger;
+    private readonly IMetricsService _metricsService = metricsService;
 
     // Throws an ApiException for non-success HTTP responses (4xx/5xx).
     public void EnsureSuccess(HttpResponseMessage response, string systemName, string url, string body)
     {
-        // If the response indicates success, simply return
+        // Extract method for potential use in metrics
+        var method = response.RequestMessage?.Method;
+        var metricBase = MetricsOperationMap.TryGetMetricBase(systemName);
+
+        // Log success metrics for POST/DELETE operations
         if (response.IsSuccessStatusCode)
+        {
+            if (metricBase != null && (method == HttpMethod.Post || method == HttpMethod.Delete))
+            {
+                var methodKey = method == HttpMethod.Post ? "post" : "delete";
+
+                _metricsService.Count(
+                    $"{metricBase}_{methodKey}_success_total",
+                    $"Total number of successful {method.Method} requests for {systemName}"
+                );
+            }
+
             return;
+        }
+
+        // Log failure metrics for POST/DELETE operations
+        if (metricBase != null && (method == HttpMethod.Post || method == HttpMethod.Delete))
+        {
+            var methodKey = method == HttpMethod.Post ? "post" : "delete";
+
+            _metricsService.Count(
+                $"{metricBase}_{methodKey}_fail_total",
+                $"Total number of failed {method.Method} requests for {systemName}"
+            );
+        }
 
         // Create ApiErrorInfo with relevant details
         var info = new ApiErrorInfo
@@ -65,10 +95,10 @@ public class ApiResponseGuard(ILogger<ApiResponseGuard> logger) : IApiResponseGu
         return true;
     }
 
-    /// Ensures a successful response contains a JSON body.
+    // Ensures a successful response contains a JSON body.
     public bool EnsureJsonBody(string body, string systemName, string url, int statusCode)
     {
-        // Body exists → OK
+        // Body exists - OK
         if (!string.IsNullOrWhiteSpace(body))
             return true;
 
@@ -84,7 +114,7 @@ public class ApiResponseGuard(ILogger<ApiResponseGuard> logger) : IApiResponseGu
     // Ensures a successful response contains binary content.
     public bool EnsureBinaryBody(byte[] content, string systemName, string url, int statusCode)
     {
-        // Content exists → OK
+        // Content exists - OK
         if (content is { Length: > 0 })
             return true;
 
@@ -95,5 +125,24 @@ public class ApiResponseGuard(ILogger<ApiResponseGuard> logger) : IApiResponseGu
             url);
 
         return false;
+    }
+
+    internal static class MetricsOperationMap
+    {
+        private static readonly FrozenDictionary<string, string> Map =
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                [SystemNames.DefenderAvScan]        = "intunelight_defender_av_scan",
+                [SystemNames.EntraDeviceDelete]     = "intunelight_entra_device_delete",
+                [SystemNames.IntuneDeviceSync]      = "intunelight_intune_device_sync",
+                [SystemNames.IntuneDeviceWipe]      = "intunelight_intune_device_wipe",
+                [SystemNames.IntuneAutopilotTag]    = "intunelight_intune_autopilot_tag",
+                [SystemNames.IntuneLapsRotate]      = "intunelight_intune_laps_rotate",
+                [SystemNames.IntuneDeviceDelete]    = "intunelight_intune_device_delete",
+                [SystemNames.IntuneAutopilotDelete] = "intunelight_intune_autopilot_delete"
+
+            }.ToFrozenDictionary();
+
+        public static string? TryGetMetricBase(string systemName) => Map.TryGetValue(systemName, out var key) ? key : null;
     }
 }

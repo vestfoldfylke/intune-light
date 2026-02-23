@@ -21,6 +21,7 @@
 		<PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
 		<PackageReference Include="Vestfold.Extensions.Logging" Version="2.0.0" />
 		<PackageReference Include="HtmlSanitizer" Version="9.0.892" />
+		<PackageReference Include="Vestfold.Extensions.Metrics" Version="1.0.1" />
 	</ItemGroup>
 
 </Project>

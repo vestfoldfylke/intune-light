@@ -6,8 +6,10 @@ using IntuneLight.Services.State;
 using Microsoft.Extensions.Options;
 using MudBlazor;
 using MudBlazor.Services;
+using Prometheus;
 using Serilog;
 using Vestfold.Extensions.Logging;
+using Vestfold.Extensions.Metrics;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -105,24 +107,42 @@ builder.Services.AddScoped<DeviceLookupState>();
 // Register HttpContextAccessor
 builder.Services.AddHttpContextAccessor();
 
+// Add Vestfold Metrics for Prometheus instrumentation
+builder.Services.AddVestfoldMetrics();
+
+// Configure the service container to collect Prometheus metrics from all registered HttpClients
+builder.Services.UseHttpClientMetrics();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
 app.UseHttpsRedirection();
 
-app.UseAntiforgery();
-
 app.UseSerilogRequestLogging();
 
+app.UseRouting();
+
+// After routing(and after auth if present)
+app.UseAntiforgery();
+
+// HTTP request metrics
+app.UseHttpMetrics();
+
+// Minimal api endpoint to expose collected metrics in Prometheus text format
+app.MapGet("/metrics", async context =>
+{
+    context.Response.ContentType = "text/plain; version=0.0.4";
+    await Metrics.DefaultRegistry.CollectAndExportAsTextAsync(context.Response.Body);
+});
+
 app.MapStaticAssets();
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
