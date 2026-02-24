@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using IntuneLight.Infrastructure;
 using IntuneLight.Models.Defender;
+using Vestfold.Extensions.Metrics.Services;
 
 namespace IntuneLight.Services;
 
@@ -15,12 +16,13 @@ public interface IDefenderService
     Task<DefenderScanResult> RunAntiVirusScanAsync(string machineId, DefenderScanType scanType, string? comment = null);
 }
 
-public sealed class DefenderService(IHttpClientFactory httpClientFactory, ITokenService tokenService, IApiResponseGuard guard) : IDefenderService
+public sealed class DefenderService(IHttpClientFactory httpClientFactory, ITokenService tokenService, IApiResponseGuard guard, IMetricsService metricsService) : IDefenderService
 {
     // Dependencies
     private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
     private readonly ITokenService _tokenService = tokenService;
     private readonly IApiResponseGuard _guard = guard;
+    private readonly IMetricsService _metricsService = metricsService;
 
     // JSON serializer options
     private readonly JsonSerializerOptions _jsonSerializerOptions = new() { PropertyNameCaseInsensitive = true };

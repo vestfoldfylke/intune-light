@@ -3,7 +3,6 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using IntuneLight.Infrastructure;
 using IntuneLight.Models.Entra;
-using Microsoft.AspNetCore.Authentication.OAuth.Claims;
 
 namespace IntuneLight.Services;
 
