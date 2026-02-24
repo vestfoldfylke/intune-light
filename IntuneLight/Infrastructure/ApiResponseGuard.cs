@@ -30,11 +30,12 @@ public class ApiResponseGuard(ILogger<ApiResponseGuard> logger, IMetricsService 
         {
             if (metricBase != null && (method == HttpMethod.Post || method == HttpMethod.Delete))
             {
-                var methodKey = method == HttpMethod.Post ? "post" : "delete";
-
                 _metricsService.Count(
-                    $"{metricBase}_{methodKey}_success_total",
-                    $"Total number of successful {method.Method} requests for {systemName}"
+                    "intunelight_http_requests_total",
+                    "Total number of HTTP requests",
+                    ("method", method.Method),
+                    ("operation", metricBase),
+                    ("status", "success")
                 );
             }
 
@@ -44,11 +45,12 @@ public class ApiResponseGuard(ILogger<ApiResponseGuard> logger, IMetricsService 
         // Log failure metrics for POST/DELETE operations
         if (metricBase != null && (method == HttpMethod.Post || method == HttpMethod.Delete))
         {
-            var methodKey = method == HttpMethod.Post ? "post" : "delete";
-
             _metricsService.Count(
-                $"{metricBase}_{methodKey}_fail_total",
-                $"Total number of failed {method.Method} requests for {systemName}"
+                "intunelight_http_requests_total",
+                "Total number of HTTP requests",
+                ("method", method.Method),
+                ("operation", metricBase),
+                ("status", "error")
             );
         }
 
@@ -132,15 +134,14 @@ public class ApiResponseGuard(ILogger<ApiResponseGuard> logger, IMetricsService 
         private static readonly FrozenDictionary<string, string> Map =
             new Dictionary<string, string>(StringComparer.Ordinal)
             {
-                [SystemNames.DefenderAvScan]        = "intunelight_defender_av_scan",
-                [SystemNames.EntraDeviceDelete]     = "intunelight_entra_device_delete",
-                [SystemNames.IntuneDeviceSync]      = "intunelight_intune_device_sync",
-                [SystemNames.IntuneDeviceWipe]      = "intunelight_intune_device_wipe",
-                [SystemNames.IntuneAutopilotTag]    = "intunelight_intune_autopilot_tag",
-                [SystemNames.IntuneLapsRotate]      = "intunelight_intune_laps_rotate",
-                [SystemNames.IntuneDeviceDelete]    = "intunelight_intune_device_delete",
-                [SystemNames.IntuneAutopilotDelete] = "intunelight_intune_autopilot_delete"
-
+                [SystemNames.DefenderAvScan] = "defender_av_scan",
+                [SystemNames.EntraDeviceDelete] = "entra_device_delete",
+                [SystemNames.IntuneDeviceSync] = "intune_device_sync",
+                [SystemNames.IntuneDeviceWipe] = "intune_device_wipe",
+                [SystemNames.IntuneAutopilotTag] = "intune_autopilot_tag",
+                [SystemNames.IntuneLapsRotate] = "intune_laps_rotate",
+                [SystemNames.IntuneDeviceDelete] = "intune_device_delete",
+                [SystemNames.IntuneAutopilotDelete] = "intune_autopilot_delete"
             }.ToFrozenDictionary();
 
         public static string? TryGetMetricBase(string systemName) => Map.TryGetValue(systemName, out var key) ? key : null;
