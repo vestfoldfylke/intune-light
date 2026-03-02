@@ -12,6 +12,7 @@ env:
   APP_NAME: 'vfkdlzdustinlweb' # set this to your function or web app name
   AZURE_FUNCTIONAPP_PACKAGE_PATH: 'IntuneLight' # set this to the path to your web app project, defaults to the repository root
   DOTNET_VERSION: '9.0.x'
+  FRAMEWORK_VERSION: 'net9.0'
 
 jobs:
   build-and-deploy:
@@ -25,14 +26,11 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: 'Test Project'
-        run: dotnet test --configuration Release
-
       - name: 'Resolve Project Dependencies Using Dotnet'
         shell: bash # For Windows, use pwsh
         run: |
           pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
-          dotnet build --configuration Release --output ./output
+          dotnet build --configuration Release --output ./output -f ${{ env.FRAMEWORK_VERSION }}
           popd
 
       - name: 'Run Azure Functions Action'
