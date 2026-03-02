@@ -4,9 +4,8 @@
 name: Build and deploy dotnet project to Azure Web App - TEST
 
 on:
-  release:
-    types: [published]
-    branches: [main]
+  push:
+    branches: ["main"]
   workflow_dispatch:
 
 env:
