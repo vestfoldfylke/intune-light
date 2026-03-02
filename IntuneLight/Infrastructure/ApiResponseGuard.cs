@@ -1,5 +1,6 @@
 ﻿using System.Collections.Frozen;
 using IntuneLight.Models.ApiError;
+using IntuneLight.Security;
 using Vestfold.Extensions.Metrics.Services;
 
 namespace IntuneLight.Infrastructure;
@@ -13,10 +14,14 @@ public interface IApiResponseGuard
 }
 
 // Guards API responses and throws structured exceptions on failure.
-public class ApiResponseGuard(ILogger<ApiResponseGuard> logger, IMetricsService metricsService) : IApiResponseGuard
+public class ApiResponseGuard(
+    ILogger<ApiResponseGuard> logger,
+    IMetricsService metricsService,
+    UserContext userContext) : IApiResponseGuard
 {
     private readonly ILogger<ApiResponseGuard> _logger = logger;
     private readonly IMetricsService _metricsService = metricsService;
+    private readonly UserContext _userContext = userContext;
 
     // Throws an ApiException for non-success HTTP responses (4xx/5xx).
     public void EnsureSuccess(HttpResponseMessage response, string systemName, string url, string body)
@@ -37,6 +42,13 @@ public class ApiResponseGuard(ILogger<ApiResponseGuard> logger, IMetricsService 
                     ("operation", metricBase),
                     ("status", "success")
                 );
+
+                _logger.LogInformation(
+                    "Actor {Actor} performed {Method} on {System}. Url: {Url}.",
+                    _userContext.Actor,
+                    method.Method,
+                    systemName,
+                    url);
             }
 
             return;
@@ -66,12 +78,13 @@ public class ApiResponseGuard(ILogger<ApiResponseGuard> logger, IMetricsService 
 
         // Log structured error for central logging
         _logger.LogError(
-            "API call to {System} failed with status {StatusCode} {Reason}. Url: {Url}. Body: {Body}",
+            "API call to {System} failed with status {StatusCode} {Reason}. Url: {Url}. Body: {Body}. Actor: {Actor}",
             info.SystemName,
             info.StatusCode,
             info.ReasonPhrase,
             info.Url,
-            info.ResponseBody);
+            info.ResponseBody,
+            _userContext.Actor);
 
         throw new ApiException(info);
     }
@@ -134,13 +147,13 @@ public class ApiResponseGuard(ILogger<ApiResponseGuard> logger, IMetricsService 
         private static readonly FrozenDictionary<string, string> Map =
             new Dictionary<string, string>(StringComparer.Ordinal)
             {
-                [SystemNames.DefenderAvScan] = "defender_av_scan",
-                [SystemNames.EntraDeviceDelete] = "entra_device_delete",
-                [SystemNames.IntuneDeviceSync] = "intune_device_sync",
-                [SystemNames.IntuneDeviceWipe] = "intune_device_wipe",
-                [SystemNames.IntuneAutopilotTag] = "intune_autopilot_tag",
-                [SystemNames.IntuneLapsRotate] = "intune_laps_rotate",
-                [SystemNames.IntuneDeviceDelete] = "intune_device_delete",
+                [SystemNames.DefenderAvScan]        = "defender_av_scan",
+                [SystemNames.EntraDeviceDelete]     = "entra_device_delete",
+                [SystemNames.IntuneDeviceSync]      = "intune_device_sync",
+                [SystemNames.IntuneDeviceWipe]      = "intune_device_wipe",
+                [SystemNames.IntuneAutopilotTag]    = "intune_autopilot_tag",
+                [SystemNames.IntuneLapsRotate]      = "intune_laps_rotate",
+                [SystemNames.IntuneDeviceDelete]    = "intune_device_delete",
                 [SystemNames.IntuneAutopilotDelete] = "intune_autopilot_delete"
             }.ToFrozenDictionary();
 

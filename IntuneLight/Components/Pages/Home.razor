@@ -124,54 +124,32 @@
                         </MudText>
                     </MudStack>
 
-                    <MudStack Row=true Justify="Justify.FlexStart" Spacing="16" Class="mt-5">
-
-                        <MudStack Justify="Justify.FlexStart" AlignItems="AlignItems.Start" Spacing="5">
-                            <div>
-                                <MudText Typo="Typo.body2" Class="mb-1"><b>Serienummer:</b></MudText>
-                                <MudText Typo="Typo.body2">
-                                    @UiFormat.TextOrFallback(_state.ManagedDevice.SerialNumber)
-                                </MudText>
-                            </div>
-                            <div>
-                                <MudText Typo="Typo.body2" Class="mb-1"><b>WiFi MAC-adresse:</b></MudText>
-                                <MudText Typo="Typo.body2">
-                                    @UiFormat.TextOrFallback(_state.ManagedDevice.WiFiMacAddress)
-                                </MudText>
-                            </div>
-                        </MudStack>
-
-                        <MudStack Justify="Justify.FlexEnd" AlignItems="AlignItems.Start" Spacing="5">
-                            <div>
-                                <MudText Typo="Typo.body2" Class="mb-1"><b>Modell:</b></MudText>
-                                <MudText Typo="Typo.body2">
-                                    @UiFormat.TextOrFallback(_state.AutopilotDevice?.SystemFamily)
-                                </MudText>
-                            </div>
-                            <div>
-                                <MudText Typo="Typo.body2" Class="mb-1"><b>Produsent:</b></MudText>
-                                <MudText Typo="Typo.body2">
-                                    @UiFormat.TextOrFallback(_state.ManagedDevice.Manufacturer)
-                                </MudText>
-                            </div>
-                        </MudStack>
-
-                        <MudStack Justify="Justify.FlexEnd" AlignItems="AlignItems.Start" Spacing="5">
-                            <div>
-                                <MudText Typo="Typo.body2" Class="mb-1"><b>Autopilot tag:</b></MudText>
-                                <MudText Typo="Typo.body2">
-                                    @UiFormat.TextWithoutPrefixOrFallback(_state.AutopilotDevice?.GroupTag, "windows-ap-")
-                                </MudText>
-                            </div>
-                            <div>
-                                <MudText Typo="Typo.body2" Class="mb-1"><b>Autopilot status:</b></MudText>
-                                <MudText Typo="Typo.body2">
-                                    @UiFormat.TextOrFallback(_state.AutopilotDevice?.EnrollmentState)
-                                </MudText>
-                            </div>
-                        </MudStack>
-
-                    </MudStack>
+                    <MudGrid Spacing="3" Class="mt-5">
+                        <MudItem xs="12" lg="4">
+                            <MudText Typo="Typo.body2" Class="mb-1"><b>Serienummer:</b></MudText>
+                            <MudText Typo="Typo.body2" Class="text-truncate">@UiFormat.TextOrFallback(_state.ManagedDevice.SerialNumber)</MudText>
+                        </MudItem>
+                        <MudItem xs="12" lg="4">
+                            <MudText Typo="Typo.body2" Class="mb-1"><b>WiFi MAC-adresse:</b></MudText>
+                            <MudText Typo="Typo.body2" Class="text-truncate">@UiFormat.TextOrFallback(_state.ManagedDevice.WiFiMacAddress)</MudText>
+                        </MudItem>
+                        <MudItem xs="12" lg="4">
+                            <MudText Typo="Typo.body2" Class="mb-1"><b>Modell:</b></MudText>
+                            <MudText Typo="Typo.body2" Class="text-truncate">@UiFormat.TextOrFallback(_state.AutopilotDevice?.SystemFamily)</MudText>
+                        </MudItem>
+                        <MudItem xs="12" lg="4">
+                            <MudText Typo="Typo.body2" Class="mb-1"><b>Produsent:</b></MudText>
+                            <MudText Typo="Typo.body2" Class="text-truncate">@UiFormat.TextOrFallback(_state.ManagedDevice.Manufacturer)</MudText>
+                        </MudItem>
+                        <MudItem xs="12" lg="4">
+                            <MudText Typo="Typo.body2" Class="mb-1"><b>Autopilot tag:</b></MudText>
+                            <MudText Typo="Typo.body2" Class="text-truncate">@UiFormat.TextWithoutPrefixOrFallback(_state.AutopilotDevice?.GroupTag, "windows-ap-")</MudText>
+                        </MudItem>
+                        <MudItem xs="12" lg="4">
+                            <MudText Typo="Typo.body2" Class="mb-1"><b>Autopilot status:</b></MudText>
+                            <MudText Typo="Typo.body2" Class="text-truncate">@UiFormat.TextOrFallback(_state.AutopilotDevice?.EnrollmentState)</MudText>
+                        </MudItem>
+                    </MudGrid>
 
                 </MudPaper>
             </MudItem>
@@ -216,57 +194,35 @@
                         </MudText>
                     </MudStack>
 
-                    <MudStack Row=true Justify="Justify.FlexStart" Spacing="16" Class="mt-5">
-
-                        <MudStack Justify="Justify.FlexStart" AlignItems="AlignItems.Start" Spacing="5">
-                            <div>
-                                <MudText Typo="Typo.body2" Class="mb-1"><b>Tittel:</b></MudText>
-                                <MudText Typo="Typo.body2">
-                                    @UiFormat.TextOrFallback(_state.EntraUser?.JobTitle)
-                                </MudText>
-                            </div>
-                            <div>
-                                <MudText Typo="Typo.body2" Class="mb-1"><b>Konto:</b></MudText>
-                                <MudText Typo="Typo.body2">
-                                    @UiFormat.TextOrFallback(_state.EntraUser?.UserPrincipalName)       
-                                </MudText>
-                            </div>
-                        </MudStack>
-
-                        <MudStack Justify="Justify.FlexStart" AlignItems="AlignItems.Start" Spacing="5">
-                            <div>
-                                <MudText Typo="Typo.body2" Class="mb-1"><b>Mobil:</b></MudText>
-                                <MudText Typo="Typo.body2">
-                                    @UiFormat.TextOrFallback(_state.EntraUser?.MobilePhone)
-                                 </MudText>
-                            </div>
-                            <div>
-                                <MudText Typo="Typo.body2" Class="mb-1"><b>Lokasjon:</b></MudText>
-                                <MudText Typo="Typo.body2">
-                                    @UiFormat.TextOrFallback(_state.EntraUser?.OfficeLocation)      
-                                </MudText>
-                            </div>
-                        </MudStack>
-
-                        <MudStack Justify="Justify.FlexStart" AlignItems="AlignItems.Start" Spacing="5">
-                            <div>
-                                <MudText Typo="Typo.body2" Class="mb-1"><b>Avdeling:</b></MudText>
-                                <MudText Typo="Typo.body2">
-                                    @UiFormat.TextOrFallback(_state.EntraUser?.Department)
-                                </MudText>
-                            </div>
-                            @if(!string.IsNullOrEmpty(_state.EntraUser?.Manager))
-                            {
-                                <div>
-                                    <MudText Typo="Typo.body2" Class="mb-1"><b>Leder:</b></MudText>
-                                    <MudText Typo="Typo.body2">
-                                        @UiFormat.TextOrFallback(_state.EntraUser?.Manager)
-                                     </MudText>
-                                </div>
-                            }
-                        </MudStack>
-
-                    </MudStack>
+                    <MudGrid Spacing="3" Class="mt-5">
+                        <MudItem xs="12" lg="4">
+                            <MudText Typo="Typo.body2" Class="mb-1"><b>Tittel:</b></MudText>
+                            <MudText Typo="Typo.body2" Class="text-truncate">@UiFormat.TextOrFallback(_state.EntraUser?.JobTitle)</MudText>
+                        </MudItem>
+                        <MudItem xs="12" lg="4">
+                            <MudText Typo="Typo.body2" Class="mb-1"><b>Konto:</b></MudText>
+                            <MudText Typo="Typo.body2" Class="text-truncate">@UiFormat.TextOrFallback(_state.EntraUser?.UserPrincipalName)</MudText>
+                        </MudItem>
+                        <MudItem xs="12" lg="4">
+                            <MudText Typo="Typo.body2" Class="mb-1"><b>Mobil:</b></MudText>
+                            <MudText Typo="Typo.body2" Class="text-truncate">@UiFormat.TextOrFallback(_state.EntraUser?.MobilePhone)</MudText>
+                        </MudItem>
+                        <MudItem xs="12" lg="4">
+                            <MudText Typo="Typo.body2" Class="mb-1"><b>Lokasjon:</b></MudText>
+                            <MudText Typo="Typo.body2" Class="text-truncate">@UiFormat.TextOrFallback(_state.EntraUser?.OfficeLocation)</MudText>
+                        </MudItem>
+                        <MudItem xs="12" lg="4">
+                            <MudText Typo="Typo.body2" Class="mb-1"><b>Avdeling:</b></MudText>
+                            <MudText Typo="Typo.body2" Class="text-truncate">@UiFormat.TextOrFallback(_state.EntraUser?.Department)</MudText>
+                        </MudItem>
+                        @if (!string.IsNullOrEmpty(_state.EntraUser?.Manager))
+                        {
+                            <MudItem xs="12" lg="4">
+                                <MudText Typo="Typo.body2" Class="mb-1"><b>Leder:</b></MudText>
+                                <MudText Typo="Typo.body2" Class="text-truncate">@UiFormat.TextOrFallback(_state.EntraUser?.Manager)</MudText>
+                            </MudItem>
+                        }
+                    </MudGrid>
 
                 </MudPaper>
             </MudItem>

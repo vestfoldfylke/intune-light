@@ -17,12 +17,14 @@ public sealed class TokenService : ITokenService
     private readonly EntraIdOptions _options;
     private readonly IConfidentialClientApplication _app;
     private readonly ILogger<TokenService> _logger;
+    private readonly IConfiguration _configuration;
 
     // Constructor
-    public TokenService(IOptions<EntraIdOptions> options, ILogger<TokenService> logger)
+    public TokenService(IOptions<EntraIdOptions> options, ILogger<TokenService> logger, IConfiguration configuration)
     {
         _options = options.Value;
         _logger = logger;
+        _configuration = configuration;
 
         _app = ConfidentialClientApplicationBuilder
             .Create(_options.ClientId)
@@ -78,24 +80,14 @@ public sealed class TokenService : ITokenService
     // Fetch token for Pureservice from environment variable
     public Task<string> GetPureserviceTokenAsync()
     {
-        try
-        {
-            var token = Environment.GetEnvironmentVariable("PURESERVICE_API_KEY")?
-                                   .Replace("\r", "")
-                                   .Replace("\n", "")
-                                   .Trim();
+        var token = _configuration["Pureservice:ApiKey"];
 
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                _logger.LogError("Missing environment variable: PURESERVICE_API_KEY");
-                throw new InvalidOperationException("Pureservice API token er ikke konfigurert.");
-            }
-
-            return Task.FromResult(token);
-        }
-        catch (Exception)
+        if (string.IsNullOrWhiteSpace(token))
         {
-            throw;
+            _logger.LogError("Mangler konfigurasjon: Pureservice:ApiKey");
+            throw new InvalidOperationException("Pureservice API token er ikke konfigurert.");
         }
+
+        return Task.FromResult(token);
     }
 }
