@@ -10,6 +10,6 @@ public sealed class EntraIdOptions
     public string GraphScope { get; set; } = "https://graph.microsoft.com/.default";
     public string DefenderScope { get; set; } = "https://api.securitycenter.microsoft.com/.default";
     public string Authority => $"https://login.microsoftonline.com/{TenantId}";
-    public string AppRoleEmployee { get; set; } = string.Empty;
+    public string AppRoleUser { get; set; } = string.Empty;
     public string AppRoleAdmin { get; set; } = string.Empty;
 }

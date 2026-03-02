@@ -104,14 +104,14 @@ builder.Services.AddAuthentication("EasyAuth")
 
 // Define authorization policies based on roles from EntraId options
 // This : [Authorize(Policy = Policy.Admin)]
-// Not  : [Authorize(Roles = Policy.Employee)]
+// Not  : [Authorize(Roles = Policy.User)]
 builder.Services.AddAuthorization(options =>
 {
     var entraOptions = builder.Configuration.GetSection("EntraId").Get<EntraIdOptions>();
 
-    options.AddPolicy(Policy.Admin, policy => policy.RequireRole(entraOptions!.AppRoleEmployee));
+    options.AddPolicy(Policy.Admin, policy => policy.RequireRole(entraOptions!.AppRoleAdmin));
 
-    options.AddPolicy(Policy.Employee, policy => policy.RequireRole(entraOptions!.AppRoleAdmin));
+    options.AddPolicy(Policy.User, policy => policy.RequireRole(entraOptions!.AppRoleUser));
 });
 
 // Register ActorContext and UserContext for per-request identity information
