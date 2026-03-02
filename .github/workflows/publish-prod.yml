@@ -1,0 +1,45 @@
+# Docs for the Azure Web Apps Deploy action: https://github.com/azure/functions-action
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+
+name: Build and deploy dotnet project to Azure Web App - PROD
+
+on:
+  release:
+    types: [published]
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  APP_NAME: 'vfkplzdustinlweb' # set this to your function or web app name
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: 'IntuneLight' # set this to the path to your web app project, defaults to the repository root
+  DOTNET_VERSION: '9.0.x'
+
+jobs:
+  build-and-deploy:
+    runs-on: self-hosted
+    steps:
+      - name: 'Checkout GitHub Action'
+        uses: actions/checkout@v6
+
+      - name: Setup DotNet ${{ env.DOTNET_VERSION }} Environment
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: 'Test Project'
+        run: dotnet test --configuration Release
+
+      - name: 'Resolve Project Dependencies Using Dotnet'
+        shell: bash # For Windows, use pwsh
+        run: |
+          pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
+          dotnet build --configuration Release --output ./output
+          popd
+
+      - name: 'Run Azure Functions Action'
+        uses: Azure/functions-action@v1
+        id: fa
+        with:
+          app-name: ${{ env.APP_NAME }}
+          package: '${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output'
+          publish-profile: ${{ secrets.PROD_AZURE_FUNCTIONAPP_PUBLISH_PROFILE }} # Remove publish-profile to use Azure RBAC
