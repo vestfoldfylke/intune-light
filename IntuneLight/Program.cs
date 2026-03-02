@@ -102,7 +102,17 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddAuthentication("EasyAuth")
                 .AddScheme<AuthenticationSchemeOptions, EasyAuthAuthenticationHandler>("EasyAuth", null);
 
-builder.Services.AddAuthorization();
+// Define authorization policies based on roles from EntraId options
+// This : [Authorize(Policy = Policy.Admin)]
+// Not  : [Authorize(Roles = Policy.Employee)]
+builder.Services.AddAuthorization(options =>
+{
+    var entraOptions = builder.Configuration.GetSection("EntraId").Get<EntraIdOptions>();
+
+    options.AddPolicy(Policy.Admin, policy => policy.RequireRole(entraOptions!.AppRoleEmployee));
+
+    options.AddPolicy(Policy.Employee, policy => policy.RequireRole(entraOptions!.AppRoleAdmin));
+});
 
 // Register ActorContext and UserContext for per-request identity information
 builder.Services.AddScoped<UserContext>();
