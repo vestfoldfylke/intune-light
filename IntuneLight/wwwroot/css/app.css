@@ -163,3 +163,8 @@ body, button, input, textarea {
 .preserve-linebreaks {
     white-space: pre-line;
 }
+.text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

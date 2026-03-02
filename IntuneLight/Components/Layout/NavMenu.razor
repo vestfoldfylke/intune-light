@@ -1,7 +1,9 @@
 ﻿@using IntuneLight.Helpers
 @using IntuneLight.Infrastructure
+@using IntuneLight.Security
 @implements IDisposable
 @inject IConfiguration Configuration
+@inject UserContext UserCtx
 
 <MudNavMenu Class="custom-nav-menu">
 
@@ -11,7 +13,7 @@
                 <MudIcon Icon="@Icons.Material.Filled.SupportAgent" />
             </MudAvatar>
         </MudBadge>
-        <MudText Typo="Typo.subtitle1">Nils Solberg</MudText>
+        <MudText Typo="Typo.subtitle1">@UserCtx.DisplayName</MudText>
     </MudStack>
 
     <MudText Class="version ml-5 mb-5" Typo="Typo.subtitle1">

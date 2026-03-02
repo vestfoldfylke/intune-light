@@ -1,8 +1,11 @@
 using IntuneLight.Components;
+using IntuneLight.Diagnostics;
 using IntuneLight.Infrastructure;
 using IntuneLight.Models.Options;
+using IntuneLight.Security;
 using IntuneLight.Services;
 using IntuneLight.Services.State;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 using MudBlazor;
 using MudBlazor.Services;
@@ -38,23 +41,14 @@ builder.Services.AddMudServices(config =>
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-// Bind EntraId options from appsettings and environment
-builder.Services.Configure<EntraIdOptions>(options =>
-{
-    var section = builder.Configuration.GetSection("EntraId");
-    section.Bind(options);
-
-    var clientSecret = Environment.GetEnvironmentVariable("INTUNE_LIGHT_CS");
-    if (string.IsNullOrWhiteSpace(clientSecret))
-    {
-        throw new InvalidOperationException("Environment variable INTUNE_LIGHT_CS is not set.");
-    }
-
-    options.ClientSecret = clientSecret;
-});
+// Bind EntraId options from appsettings, user secrets and environment
+builder.Services.Configure<EntraIdOptions>(builder.Configuration.GetSection("EntraId"));
 
 // Bind HttpClients options (BaseAddress)
 builder.Services.Configure<HttpClientsOptions>(builder.Configuration.GetRequiredSection("HttpClients"));
+
+// Bind Pureservice options from appsettings (base address)
+builder.Services.Configure<PureserviceOptions>(builder.Configuration.GetSection("Pureservice"));
 
 // Register token service
 builder.Services.AddSingleton<ITokenService, TokenService>();
@@ -78,9 +72,6 @@ builder.Services.AddHttpClient("Defender", (sp, client) =>
 
     client.BaseAddress = new Uri(httpOptions.Defender.BaseAddress);
 });
-
-// Bind Pureservice options from appsettings (base address)
-builder.Services.Configure<PureserviceOptions>(builder.Configuration.GetSection("Pureservice"));
 
 // Named HttpClient for Pureservice
 builder.Services.AddHttpClient("Pureservice", (sp, client) =>
@@ -107,6 +98,15 @@ builder.Services.AddScoped<DeviceLookupState>();
 // Register HttpContextAccessor
 builder.Services.AddHttpContextAccessor();
 
+// Add authorization services (not for actual auth)
+builder.Services.AddAuthentication("EasyAuth")
+                .AddScheme<AuthenticationSchemeOptions, EasyAuthAuthenticationHandler>("EasyAuth", null);
+
+builder.Services.AddAuthorization();
+
+// Register ActorContext and UserContext for per-request identity information
+builder.Services.AddScoped<UserContext>();
+
 // Add Vestfold Metrics for Prometheus instrumentation
 builder.Services.AddVestfoldMetrics();
 
@@ -128,7 +128,11 @@ app.UseSerilogRequestLogging();
 
 app.UseRouting();
 
-// After routing(and after auth if present)
+// AuthN/Z must be after routing but before endpoints
+app.UseAuthentication();
+app.UseAuthorization();
+
+// Antiforgery must be after routing (and after auth if present)
 app.UseAntiforgery();
 
 // HTTP request metrics
@@ -140,6 +144,16 @@ app.MapGet("/metrics", async context =>
     context.Response.ContentType = "text/plain; version=0.0.4";
     await Metrics.DefaultRegistry.CollectAndExportAsTextAsync(context.Response.Body);
 });
+
+// Debug endpoint (open in dev, protected in prod)
+if (app.Environment.IsDevelopment())
+{
+    app.MapGet("/debug/whoami", DebugEndpoints.WhoAmI);
+}
+else
+{
+    app.MapGet("/debug/whoami", DebugEndpoints.WhoAmI).RequireAuthorization();
+}
 
 app.MapStaticAssets();
 
