@@ -161,23 +161,18 @@ public sealed class DeviceLookupState
     // Validates allowed serial number characters (A-Z, 0-9, '-'), and length bounds.
     private static string GetSerialError(string serial)
     {
-        if (string.IsNullOrWhiteSpace(serial))
-            return "Serienummer mangler.";
+        serial = serial?.Trim() ?? string.Empty;
 
-        if (serial.Length is < 3 or > 40)
-            return "Serienummer har ugyldig lengde.";
+        if (string.IsNullOrEmpty(serial)) return "Serienummer mangler.";
+        if (serial.Length is < 3 or > 40) return "Serienummer har ugyldig lengde.";
+        if (serial.All(c => c == '-'))    return "Serienummer er ugyldig.";
 
         foreach (var c in serial)
         {
-            // Allow only letters/digits and hyphen
             if (!(char.IsLetterOrDigit(c) || c == '-'))
                 return "Serienummer kan kun inneholde bokstaver, tall og bindestrek.";
         }
-
-        // avoid only hyphens
-        if (serial.All(c => c == '-'))
-            return "Serienummer er ugyldig.";
-
+        
         return string.Empty;
     }
 
