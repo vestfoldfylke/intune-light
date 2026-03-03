@@ -10,19 +10,21 @@
     <link href=@Assets["_content/MudBlazor/MudBlazor.min.css"] rel="stylesheet" />
     <link href=@Assets["css/app.css"] rel="stylesheet" />
     <ImportMap />
-    <link rel="icon" type="image/ico" href="favicon.ico" />
-    <link rel="icon" type="image/png" href="favicon-16x16.png" sizes="16x16">
-    <link rel="icon" type="image/png" href="favicon-32x32.png" sizes="32x32">
-    <link rel="icon" type="image/png" href="favicon-96x96.png" sizes="96x96">
+    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="Intune Light" />
+    <link rel="manifest" href="/site.webmanifest" />
     <HeadOutlet @rendermode="InteractiveServer" />
 </head>
 
 <body>
-
     <Routes @rendermode="InteractiveServer" />
     <script src="_framework/blazor.web.js"></script>
-    <script src=@Assets["_content/MudBlazor/MudBlazor.min.js"]></script>
-    <script src=@Assets["js/app.js"]></script>
+    <script src=@Assets["_content/MudBlazor/MudBlazor.min.js"] defer></script>
+    <script src=@Assets["sw-registrator.js"] defer></script>
+    <script src=@Assets["js/app.js"] defer></script>
 </body>
 
 </html>

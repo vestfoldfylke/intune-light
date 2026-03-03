@@ -1,3 +1,4 @@
+using System.Globalization;
 using IntuneLight.Components;
 using IntuneLight.Diagnostics;
 using IntuneLight.Infrastructure;
@@ -13,6 +14,10 @@ using Prometheus;
 using Serilog;
 using Vestfold.Extensions.Logging;
 using Vestfold.Extensions.Metrics;
+
+// Set Norwegian culture to ensure correct date and number formatting
+CultureInfo.DefaultThreadCurrentCulture = new CultureInfo("nb-NO");
+CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo("nb-NO");
 
 var builder = WebApplication.CreateBuilder(args);
 

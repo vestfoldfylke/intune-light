@@ -1,0 +1,28 @@
+﻿@inherits LayoutComponentBase
+@inject IHttpContextAccessor HttpContextAccessor
+
+<MudThemeProvider @ref="_themeProvider" @bind-IsDarkMode="_state.IsDarkMode" Theme="AppTheme.Theme"/>
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudContainer MaxWidth="MaxWidth.Medium" Style="margin-top:30vh">
+    <MudPaper Style="border-top: 1px solid var(--mud-palette-primary); padding: 48px;">
+        @Body
+    </MudPaper>
+</MudContainer>
+
+@code 
+{
+    private MudThemeProvider _themeProvider = null!;
+
+    #region Initialization
+
+    protected override void OnInitialized()
+    {
+        var cookie = HttpContextAccessor.HttpContext?.Request.Cookies["darkMode"];
+        _state.IsDarkMode = cookie == "true";
+    }
+
+    #endregion
+}

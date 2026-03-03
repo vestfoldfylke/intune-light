@@ -15,29 +15,31 @@
 <MudContainer Style="@containerStyle" Class="mb-16">
 
     @* Intro and searchbar *@
-    <MudContainer MaxWidth="MaxWidth.Large" Class="my-16">
+    <MudContainer MaxWidth="MaxWidth.Medium" Class="my-16">
 
         @* Intro *@
         @if (_state.ManagedDevice == null)
         {
             <MudStack Justify="Justify.Center" Row Class="my-10" Style="width:100% !important">
-                <MudImage Src="/img/intune-light.png" Height="80" Alt="Intune light logo"/>
-                <MudText Typo="Typo.h4" Align="Align.Center">
-                    <b>Intune</b> <p style="font-weight:300">Light</p>
+                <MudImage Src="/img/logo-dark.png" Class="intro-logo" Alt="Intune light logo" />
+                <MudText Typo="Typo.h4" Align="Align.Left" Class="intro-logo-text">
+                    <b>Intune</b>
+                    <p style="font-weight:300" class="text-align-left">Light</p>
                 </MudText>
             </MudStack>
-
             <MudStack Justify="Justify.Center">
                 <MudText Typo="Typo.subtitle1" Align="Align.Center" Style="font-size:19px;font-weight:300">
-                    Intune light er et forenklet verktøy for servicedesk som gjør det enkelt å håndtere enheter.
-                    Løsningen gir tilgang til nødvendige device‑management funksjoner – og kun det som trengs for
-                    daglige oppgaver som sletting, nullstilling og generell administrasjon.
+                    Nok en enhet som trenger hjelp? Søk den opp med serienummeret.
+                    <MudHidden Breakpoint="Breakpoint.SmAndUp" Invert="true">
+                        <br/>
+                        Sletting, nullstilling og generell administrasjon — alt på ett sted.
+                    </MudHidden>
                 </MudText>
             </MudStack>
         }
 
         @* Search bar *@
-        <MudGrid Justify="Justify.Center" Class="mt-10">
+        <MudGrid Justify="Justify.Center" Class="mt-3">
 
             <MudItem xs="12" lg="12" md="12">
                 @if (_lastSearchSeconds.HasValue || _state.IsFetching)
@@ -71,7 +73,7 @@
                               Variant="Variant.Outlined"
                               MaxLength="40"
                               MaxLines="1"
-                              ErrorText="_state.SearchSerialError" 
+                              ErrorText="@_state.SearchSerialError" 
                               Error="@(!_state.IsSearchSerialValid)" />
             </MudItem>
 

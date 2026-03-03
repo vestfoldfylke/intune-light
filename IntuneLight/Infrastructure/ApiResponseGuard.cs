@@ -92,6 +92,10 @@ public class ApiResponseGuard(
     // Ensures the response is successful or represents valid "no data".
     public bool EnsureSuccessOrNoData(HttpResponseMessage response, string systemName, string url, string body)
     {
+        // Extract method for potential use in metrics
+        var method = response.RequestMessage?.Method;
+        var metricBase = MetricsOperationMap.TryGetMetricBase(systemName);
+
         // Treat these as "no data" in search/enrichment flows
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound ||
             response.StatusCode == System.Net.HttpStatusCode.NoContent)
@@ -107,6 +111,19 @@ public class ApiResponseGuard(
 
         // All other non-success are real errors
         EnsureSuccess(response, systemName, url, body); // Throws ApiException
+
+        // Log success metrics for IntuneDevice lookup
+        if (metricBase != null && method != null)
+        {
+            _metricsService.Count(
+                "intunelight_http_requests_total",
+                "Total number of HTTP requests",
+                ("method", method.Method),
+                ("operation", metricBase),
+                ("status", "success")
+            );
+        }
+
         return true;
     }
 
@@ -154,7 +171,8 @@ public class ApiResponseGuard(
                 [SystemNames.IntuneAutopilotTag]    = "intune_autopilot_tag",
                 [SystemNames.IntuneLapsRotate]      = "intune_laps_rotate",
                 [SystemNames.IntuneDeviceDelete]    = "intune_device_delete",
-                [SystemNames.IntuneAutopilotDelete] = "intune_autopilot_delete"
+                [SystemNames.IntuneAutopilotDelete] = "intune_autopilot_delete",
+                [SystemNames.IntuneDevice]          = "intune_device_lookup"
             }.ToFrozenDictionary();
 
         public static string? TryGetMetricBase(string systemName) => Map.TryGetValue(systemName, out var key) ? key : null;

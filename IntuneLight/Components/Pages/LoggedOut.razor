@@ -1,0 +1,14 @@
+﻿@layout AuthLayout
+@page "/logged-out"
+@using IntuneLight.Components.Layout
+
+<MudStack Spacing="10" Class="pa-5" Justify="Justify.Center" AlignItems="AlignItems.Center">
+    <MudText Typo="Typo.h5">Du er logget ut</MudText>
+    <MudText>Du kan lukke fanen eller logge inn på nytt.</MudText>
+    <MudButton Variant="Variant.Outlined" 
+               Color="Color.Secondary" 
+               Href="/"
+               Style="max-width:200px">
+        Til forsiden
+    </MudButton>
+</MudStack>
