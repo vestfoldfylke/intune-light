@@ -20,13 +20,16 @@
         @* Intro *@
         @if (_state.ManagedDevice == null)
         {
-            <MudStack Justify="Justify.Center" Row Class="my-10" Style="width:100% !important">
-                <MudImage Src="/img/logo-dark.png" Class="intro-logo" Alt="Intune light logo" />
-                <MudText Typo="Typo.h4" Align="Align.Left" Class="intro-logo-text">
-                    <b>Intune</b>
-                    <p style="font-weight:300" class="text-align-left">Light</p>
-                </MudText>
-            </MudStack>
+            <MudHidden Breakpoint="Breakpoint.SmAndUp" Invert="true">
+                <MudStack Justify="Justify.Center" Row Class="my-10" Style="width:100% !important">
+                    <MudImage Src="/img/logo-dark.png" Height="60" Alt="Intune light logo" />
+                    <MudText Typo="Typo.h5" Align="Align.Left">
+                        <b>Intune</b>
+                        <p style="font-weight:300" class="text-align-left">Light</p>
+                    </MudText>
+                </MudStack>
+            </MudHidden>
+
             <MudStack Justify="Justify.Center">
                 <MudText Typo="Typo.subtitle1" Align="Align.Center" Style="font-size:19px;font-weight:300">
                     Nok en enhet som trenger hjelp? Søk den opp med serienummeret.
