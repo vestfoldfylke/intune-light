@@ -113,7 +113,7 @@ public class ApiResponseGuard(
         EnsureSuccess(response, systemName, url, body); // Throws ApiException
 
         // Log success metrics for IntuneDevice lookup
-        if (metricBase != null && method != null)
+        if (metricBase != null && !string.IsNullOrWhiteSpace(body) && body != "[]" && method != null)
         {
             _metricsService.Count(
                 "intunelight_http_requests_total",
@@ -123,7 +123,7 @@ public class ApiResponseGuard(
                 ("status", "success")
             );
         }
-
+        
         return true;
     }
 
