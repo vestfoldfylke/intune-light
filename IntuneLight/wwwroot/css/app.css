@@ -168,22 +168,3 @@ body, button, input, textarea {
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-
-.intro-logo {
-    height: 80px;
-}
-
-.intro-logo-text {
-    font-size: 2.125rem !important; /* h4 default */
-}
-
-@media (max-width: 600px) {
-    .intro-logo {
-        height: 60px;
-    }
-
-    .intro-logo-text {
-        font-size: 1.65rem !important;
-    }
-
-}

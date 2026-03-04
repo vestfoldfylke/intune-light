@@ -128,6 +128,19 @@ builder.Services.AddVestfoldMetrics();
 // Configure the service container to collect Prometheus metrics from all registered HttpClients
 builder.Services.UseHttpClientMetrics();
 
+// Keep Blazor circuit alive longer when app is in background
+builder.Services.AddServerSideBlazor(options =>
+{
+    options.DisconnectedCircuitRetentionPeriod = TimeSpan.FromMinutes(10);
+});
+
+// Keep SignalR connection alive longer before considering it lost
+builder.Services.AddSignalR(options =>
+{
+    options.KeepAliveInterval = TimeSpan.FromSeconds(30);
+    options.ClientTimeoutInterval = TimeSpan.FromMinutes(10);
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
