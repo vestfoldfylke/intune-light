@@ -96,7 +96,7 @@
     @* No device found *@
     @if (_state.HasSearched && _state.ManagedDevice is null && !_state.IsFetching)
     {
-        <MudContainer MaxWidth="MaxWidth.Large">
+        <MudContainer MaxWidth="MaxWidth.Medium">
             <MudAlert Severity="Severity.Warning">
                 Ingen enhet ble funnet for serienummer <b>@_state.SearchSerial</b>.
             </MudAlert>
