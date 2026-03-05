@@ -3,6 +3,7 @@
 <html lang="nb">
 
 <head>
+    <PageTitle>Intune Light</PageTitle>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />  
@@ -17,6 +18,12 @@
 </head>
 
 <body>
+    <div id="components-reconnect-modal">
+        <div class="reconnect-modal-content">
+            <div class="reconnect-spinner"></div>
+            <p>Kobler til på nytt...</p>
+        </div>
+    </div>
     <Routes @rendermode="InteractiveServer" />
     <script src="_framework/blazor.web.js"></script>
     <script src=@Assets["_content/MudBlazor/MudBlazor.min.js"] defer></script>

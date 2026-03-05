@@ -43,13 +43,12 @@ public sealed class DeviceLookupState
         set
         {
             var normalized = NormalizeSerial(value);
-
             if (_searchSerial == normalized)
                 return;
 
             _searchSerial = normalized;
+            IsSearchSerialTouched = true;
             SearchSerialError = GetSerialError(_searchSerial);
-
             NotifyStateChanged();
         }
     }
@@ -104,6 +103,7 @@ public sealed class DeviceLookupState
         UserDeviceCount = null;
         IsIsolated = false;
         EntraDeviceCount = null;
+        IsSearchSerialTouched = false;
 
         NotifyStateChanged();
     }
@@ -144,8 +144,9 @@ public sealed class DeviceLookupState
 
     #region Validation
 
-    public string SearchSerialError { get; private set; } = string.Empty;
+    public string SearchSerialError { get; private set; } = GetSerialError(string.Empty);
     public bool IsSearchSerialValid => string.IsNullOrEmpty(SearchSerialError);
+    public bool IsSearchSerialTouched { get; private set; } = false;
 
     // Normalizes a serial number for lookup (trim + uppercase + remove spaces).
     private static string NormalizeSerial(string? input)
