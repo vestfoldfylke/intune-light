@@ -9,7 +9,7 @@
 @using IntuneLight.Models.State
 @implements IDisposable
 
-<PageTitle>Hjem</PageTitle>
+<PageTitle>Intune Light</PageTitle>
 
 @* Main container *@
 <MudContainer Style="@containerStyle" Class="mb-16">
@@ -77,7 +77,7 @@
                               MaxLength="40"
                               MaxLines="1"
                               ErrorText="@_state.SearchSerialError" 
-                              Error="@(!_state.IsSearchSerialValid)" />
+                              Error="@(_state.IsSearchSerialTouched && !_state.IsSearchSerialValid)"/>
             </MudItem>
 
             <MudItem xs="12" lg="12" md="12" Class="pt-0 mt-0">
@@ -1159,11 +1159,9 @@
     // Looks up a device by serial number and enriches it with data from several services.
     private async Task SearchAsync()
     {
+		// Guard against invalid input or concurrent searches.
         if (!_state.IsSearchSerialValid || _state.IsFetching)
-        {
-            _snackbar.Add("Skriv inn ett gylding serienummer før du søker.", Severity.Warning);
             return;
-        }
 
         _state.IsFetching = true;
         _state.HasSearched = false;
