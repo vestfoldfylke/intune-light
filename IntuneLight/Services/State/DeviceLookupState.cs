@@ -85,7 +85,7 @@ public sealed class DeviceLookupState
     // Clears all results for a new lookup while keeping UI flags optional.
     public void ClearResults(bool keepSearchSerial = true)
     {
-        if (!keepSearchSerial)
+        if (!keepSearchSerial) 
             _searchSerial = string.Empty;
 
         ManagedDevice = null;
@@ -104,7 +104,6 @@ public sealed class DeviceLookupState
         IsIsolated = false;
         EntraDeviceCount = null;
         IsSearchSerialTouched = false;
-
         NotifyStateChanged();
     }
 
@@ -120,8 +119,6 @@ public sealed class DeviceLookupState
         EntraUser = results.EntraUser;
         EntraDevice = results.EntraDevice;
         AutopilotDevice = results.AutopilotDevice;
-        DeviceCredential = results.DeviceCredential;
-        BitlockerRecoveryKey = results.BitlockerRecoveryKey;
         PureserviceUser = results.PureserviceUser;
         PureserviceTicket = results.PureserviceTicket;
         PureserviceAssetBySn = results.PureserviceAssetBySn;
@@ -130,7 +127,6 @@ public sealed class DeviceLookupState
         UserDeviceCount = results.UserDeviceCount;
         IsIsolated = results.IsIsolated;
         EntraDeviceCount = results.EntraDeviceCount;
-
         NotifyStateChanged();
     }
 
@@ -148,15 +144,17 @@ public sealed class DeviceLookupState
     public bool IsSearchSerialValid => string.IsNullOrEmpty(SearchSerialError);
     public bool IsSearchSerialTouched { get; private set; } = false;
 
-    // Normalizes a serial number for lookup (trim + uppercase + remove spaces).
+    // Normalizes a serial number for lookup and OData filter expressions.
+    // Trims, removes spaces, uppercases, and escapes single quotes to prevent OData injection
+    // (e.g. a serial containing ' could break the filter string and manipulate the query).
     private static string NormalizeSerial(string? input)
     {
         if (string.IsNullOrWhiteSpace(input))
             return string.Empty;
-
         return input.Trim()
-                    .Replace(" ", string.Empty) // remove pasted spaces
-                    .ToUpperInvariant();
+                    .Replace(" ", string.Empty)
+                    .ToUpperInvariant()
+                    .Replace("'", "''");
     }
 
     // Validates allowed serial number characters (A-Z, 0-9, '-'), and length bounds.

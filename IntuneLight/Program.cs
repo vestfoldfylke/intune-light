@@ -103,9 +103,19 @@ builder.Services.AddScoped<DeviceLookupState>();
 // Register HttpContextAccessor
 builder.Services.AddHttpContextAccessor();
 
-// Add authorization services (not for actual auth)
-builder.Services.AddAuthentication("EasyAuth")
-                .AddScheme<AuthenticationSchemeOptions, EasyAuthAuthenticationHandler>("EasyAuth", null);
+// Configure authentication schemes based on environment
+if (builder.Environment.IsDevelopment())
+{
+    // In development, use a mock authentication handler that simulates an authenticated user with predefined claims.
+    builder.Services.AddAuthentication("Mock")
+        .AddScheme<AuthenticationSchemeOptions, MockAuthenticationHandler>("Mock", null);
+}
+else
+{
+    // In production, use the EasyAuth authentication handler to integrate with Azure App Service Easy Auth.
+    builder.Services.AddAuthentication("EasyAuth")
+        .AddScheme<AuthenticationSchemeOptions, EasyAuthAuthenticationHandler>("EasyAuth", null);
+}
 
 // Define authorization policies based on roles from EntraId options
 // This : [Authorize(Policy = Policy.Admin)]
@@ -114,9 +124,22 @@ builder.Services.AddAuthorization(options =>
 {
     var entraOptions = builder.Configuration.GetSection("EntraId").Get<EntraIdOptions>();
 
-    options.AddPolicy(Policy.Admin, policy => policy.RequireRole(entraOptions!.AppRoleAdmin));
+    if (entraOptions is not null)
+    {
+        // Define policies that require specific roles from EntraId options
+        options.AddPolicy(Policy.Admin, policy => policy.RequireRole(entraOptions.AppRoleAdmin));
+        options.AddPolicy(Policy.User, policy => policy.RequireRole(entraOptions.AppRoleUser));
 
-    options.AddPolicy(Policy.User, policy => policy.RequireRole(entraOptions!.AppRoleUser));
+        // Grants access to users with either role
+        options.AddPolicy(Policy.AnyRole, policy =>
+            policy.RequireAssertion(ctx => 
+                                    ctx.User.IsInRole(entraOptions.AppRoleAdmin) ||
+                                    ctx.User.IsInRole(entraOptions.AppRoleUser)));
+    }
+    else
+    {
+        throw new InvalidOperationException("EntraId options must be configured for authorization policies.");
+    }
 });
 
 // Register ActorContext and UserContext for per-request identity information
@@ -168,12 +191,15 @@ app.UseAntiforgery();
 // HTTP request metrics
 app.UseHttpMetrics();
 
-// Minimal api endpoint to expose collected metrics in Prometheus text format
+// Exposes collected metrics in Prometheus text format.
+// AllowAnonymous is required because the Prometheus scraper is a machine-to-machine process
+// with no user identity or token. Access should be restricted at the network level in Azure instead.
 app.MapGet("/metrics", async context =>
 {
     context.Response.ContentType = "text/plain; version=0.0.4";
     await Metrics.DefaultRegistry.CollectAndExportAsTextAsync(context.Response.Body);
-});
+
+}).AllowAnonymous();
 
 // Debug endpoint (open in dev, protected in prod)
 if (app.Environment.IsDevelopment())
