@@ -101,6 +101,7 @@ body, button, input, textarea {
 
 .device-card {
     height: 100%;
+    min-height: 291px;
     display: flex;
     flex-direction: column;
 }

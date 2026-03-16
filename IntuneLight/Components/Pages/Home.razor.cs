@@ -305,6 +305,10 @@ public partial class Home : ComponentBase
                 case RefreshTarget.Laps:
                     _state.DeviceCredential = await _intuneService.GetLapsPasswordByAzureDeviceId(_state.ManagedDevice.AzureADDeviceId);
                     break;
+
+                case RefreshTarget.BitLocker:
+                    _state.BitlockerRecoveryKey = await _intuneService.GetBitlockerRecoveryKeyByAzureAdDeviceIdAsync(_state.ManagedDevice.AzureADDeviceId);
+                    break;
             }
 
             // Delay to give user action performed signal
@@ -328,7 +332,8 @@ public partial class Home : ComponentBase
         Defender,
         Entra,
         Pureservice,
-        Laps
+        Laps,
+        BitLocker
     }
 
     #endregion

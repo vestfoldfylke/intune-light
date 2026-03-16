@@ -91,9 +91,8 @@ public sealed class DefenderService(IHttpClientFactory httpClientFactory, IToken
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         // Build the request URL with the filter for hostname
-        var escaped = hostname.Replace("'", "''");
-        var url = $"api/machines" + 
-                  $"?$filter=computerDnsName eq '{escaped}'" + 
+        var url = $"api/machines" +
+                  $"?$filter=computerDnsName eq '{ODataHelper.EscapeFilterValue(hostname)}'" +
                   "&$top=1";
 
         // Send the GET request
@@ -137,8 +136,7 @@ public sealed class DefenderService(IHttpClientFactory httpClientFactory, IToken
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         // Build the request URL with the filter for machine-id
-        var escaped = machineId.Replace("'", "''");
-        var url = $"api/machineactions?$filter=type eq 'Isolate' and machineId eq '{escaped}'";
+        var url = $"api/machineactions?$filter=type eq 'Isolate' and machineId eq '{ODataHelper.EscapeFilterValue(machineId)}'";
 
         // Send the GET request
         var response = await client.GetAsync(url);

@@ -51,11 +51,10 @@ public sealed class IntuneService(IHttpClientFactory httpClientFactory, ITokenSe
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         // Build request URL with OData filter for serial number
-        var escapedSerial = serialNumber.Replace("'", "''");
         var url = $"beta/deviceManagement/managedDevices" +
-                  $"?$filter=serialNumber eq '{escapedSerial}'" +
-                  "&$top=1"; 
-        
+                  $"?$filter=serialNumber eq '{ODataHelper.EscapeFilterValue(serialNumber)}'" +
+                  "&$top=1";
+
         // Send GET request to Microsoft Graph
         var response = await client.GetAsync(url);
         var content = await response.Content.ReadAsStringAsync();
@@ -173,7 +172,7 @@ public sealed class IntuneService(IHttpClientFactory httpClientFactory, ITokenSe
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         // Build request URL with OData filter for serial number
-        var filter = $"contains(serialNumber,'{serialNumber}')";
+        var filter = $"contains(serialNumber,'{ODataHelper.EscapeFilterValue(serialNumber)}')";
         var url = $"beta/deviceManagement/windowsAutopilotDeviceIdentities?$filter={Uri.EscapeDataString(filter)}&$top=1";
 
         // Send the request
@@ -217,8 +216,7 @@ public sealed class IntuneService(IHttpClientFactory httpClientFactory, ITokenSe
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         // Build request URL to list Bitlocker recovery keys for the device
-        var escaped = azureAdDeviceId.Replace("'", "''");
-        var listUrl = $"v1.0/informationProtection/bitlocker/recoveryKeys?$filter=deviceId eq '{escaped}'";
+        var listUrl = $"v1.0/informationProtection/bitlocker/recoveryKeys?$filter=deviceId eq '{ODataHelper.EscapeFilterValue(azureAdDeviceId)}'";
 
         // Create HTTP request message with custom headers
         var requestMessage = new HttpRequestMessage(HttpMethod.Get, listUrl);

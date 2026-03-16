@@ -4,6 +4,7 @@ namespace IntuneLight.Infrastructure;
 
 internal static class ODataHelper
 {
+    // Determines if the OData response body contains results based on common OData response patterns.
     internal static bool HasResults(string? body)
     {
         // If body is null or whitespace, treat as no results
@@ -30,4 +31,7 @@ internal static class ODataHelper
             return !string.IsNullOrWhiteSpace(body);
         }
     }
+
+    // Escapes a string value for use in an OData filter expression to prevent injection.
+    internal static string EscapeFilterValue(string value) => value.Replace("'", "''");
 }

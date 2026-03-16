@@ -112,9 +112,29 @@ public class ApiResponseGuard(
         // All other non-success are real errors
         EnsureSuccess(response, systemName, url, body); // Throws ApiException
 
-        // Log success metrics for IntuneDevice lookup
-        if (metricBase != null && method != null && ODataHelper.HasResults(body))
+        // Log credential retrieval (LAPS/BitLocker) - direct lookup, no OData result check needed
+        if (metricBase != null && CredentialSystems.Contains(systemName))
         {
+            _metricsService.Count(
+                "intunelight_http_requests_total",
+                "Total number of HTTP requests",
+                ("method", "GET"),
+                ("operation", metricBase),
+                ("status", "success")
+            );
+
+            _logger.LogInformation(
+                "Actor {Actor} retrieved {System} credentials. Url: {Url}.",
+                _userContext.Actor,
+                systemName,
+                url);
+
+            return true;
+        }
+        // Log success metrics for IntuneDevice lookup
+        else if (metricBase != null && method != null && ODataHelper.HasResults(body))
+        {
+            // Only log successful lookups, not "no data" cases, to avoid noise in metrics
             _metricsService.Count(
                 "intunelight_http_requests_total",
                 "Total number of HTTP requests",
@@ -122,6 +142,12 @@ public class ApiResponseGuard(
                 ("operation", metricBase),
                 ("status", "success")
             );
+
+            // Log the successful search action for IntuneDevice lookups
+            _logger.LogInformation(
+                "Actor {Actor} searched for device. Url: {Url}.",
+                _userContext.Actor,
+                url);
         }
         
         return true;
@@ -172,9 +198,21 @@ public class ApiResponseGuard(
                 [SystemNames.IntuneLapsRotate]      = "intune_laps_rotate",
                 [SystemNames.IntuneDeviceDelete]    = "intune_device_delete",
                 [SystemNames.IntuneAutopilotDelete] = "intune_autopilot_delete",
-                [SystemNames.IntuneDevice]          = "intune_device_lookup"
+                [SystemNames.IntuneDevice]          = "intune_device_lookup",
+                [SystemNames.IntuneLaps]            = "intune_laps",
+                [SystemNames.IntuneBitlocker]       = "intune_bitlocker"
+
             }.ToFrozenDictionary();
 
         public static string? TryGetMetricBase(string systemName) => Map.TryGetValue(systemName, out var key) ? key : null;
     }
+
+
+    // System names that represent credential retrieval operations (LAPS, BitLocker).
+    // Used to apply actor attribution logging independently of HTTP method or OData results.
+    internal static readonly FrozenSet<string> CredentialSystems = new HashSet<string>
+    {
+        SystemNames.IntuneLaps,
+        SystemNames.IntuneBitlocker
+    }.ToFrozenSet(StringComparer.Ordinal);
 }

@@ -7,7 +7,17 @@
 @using IntuneLight.Models.Intune
 @using IntuneLight.Models.Pureservice
 @using IntuneLight.Models.State
+@using IntuneLight.Security
+@using Microsoft.AspNetCore.Authorization
 @implements IDisposable
+
+
+@* Requires the user to have either the User or Admin role.
+   To restrict specific actions to Admin only, we wrap them in:
+   <AuthorizeView Policy="@Policy.Admin"> ... </AuthorizeView> *@
+
+@attribute [Authorize(Policy = Policy.AnyUserRole)]
+
 
 <PageTitle>Intune Light</PageTitle>
 
@@ -958,18 +968,16 @@
                                 <MudImage Width="30" Src="/img/laps.png" ObjectFit="ObjectFit.ScaleDown" />
                                 <MudText Typo="Typo.subtitle1">LAPS</MudText>
                                 <MudSpacer />
-                                @if(_state.DeviceCredential is not null)
-                                {
-                                    <MudProgressCircular Indeterminate="@IsLoading(RefreshTarget.Laps)" Color="Color.Inherit" StrokeWidth="1">
-                                        <ChildContent>
-                                            <MudMenu Icon="@Icons.Material.Outlined.Settings" Class="pa-0" Dense=true AnchorOrigin="Origin.CenterLeft" TransformOrigin="Origin.CenterRight">
-                                                <MudMenuItem Label="Oppdater" OnClick="@(() => RefreshAsync(RefreshTarget.Laps))" />
-                                                <MudMenuItem Label="Roter passord" OnClick="@(() => RotateLapsPasswordAsync())" 
-                                                             Disabled="@(_state.ManagedDevice is null || _state.LapsRotationLockedDevices.Contains(_state.ManagedDevice.Id))" />
-                                            </MudMenu>
-                                        </ChildContent>
-                                    </MudProgressCircular>
-                                }
+                                <MudProgressCircular Indeterminate="@IsLoading(RefreshTarget.Laps)" Color="Color.Inherit" StrokeWidth="1">
+                                    <ChildContent>
+                                        <MudMenu Icon="@Icons.Material.Outlined.Settings" Class="pa-0" Dense=true AnchorOrigin="Origin.CenterLeft" TransformOrigin="Origin.CenterRight">
+                                            <MudMenuItem Label="@(_state.DeviceCredential is null ? "Hent passord" : "Oppdater")"
+                                                            OnClick="@(() => RefreshAsync(RefreshTarget.Laps))" />
+                                            <MudMenuItem Label="Roter passord" OnClick="@(() => RotateLapsPasswordAsync())" 
+                                                            Disabled="@(_state.ManagedDevice is null || _state.LapsRotationLockedDevices.Contains(_state.ManagedDevice.Id))" />
+                                        </MudMenu>
+                                    </ChildContent>
+                                </MudProgressCircular>
                             </MudStack>
 
                             <MudDivider Class="mb-5" />
@@ -978,8 +986,8 @@
                             <MudStack Spacing="2">
                                 @if (_state.DeviceCredential?.Credentials is null || _state.DeviceCredential.Credentials.Count == 0)
                                 {
-                                    <MudText Typo="Typo.caption">
-                                        Ingen LAPS-passord funnet.
+                                    <MudText Typo="Typo.body2" Align="Align.Center" Class="mt-10">
+                                        Trykk <b>Hent passord</b> i menyen for å hente LAPS-passordet.
                                     </MudText>
                                 }
                                 else
@@ -1043,16 +1051,24 @@
                                 <MudImage Width="30" Src="/img/bitlocker.png" ObjectFit="ObjectFit.ScaleDown" />
                                 <MudText Typo="Typo.subtitle1">Bitlocker</MudText>
                                 <MudSpacer />
+                                <MudProgressCircular Indeterminate="@IsLoading(RefreshTarget.BitLocker)" Color="Color.Inherit" StrokeWidth="1">
+                                    <ChildContent>
+                                        <MudMenu Icon="@Icons.Material.Outlined.Settings" Class="pa-0" Dense=true AnchorOrigin="Origin.CenterLeft" TransformOrigin="Origin.CenterRight">
+                                            <MudMenuItem Label="@(_state.BitlockerRecoveryKey is null ? "Hent nøkkel" : "Oppdater")"
+                                                         OnClick="@(() => RefreshAsync(RefreshTarget.BitLocker))" />
+                                        </MudMenu>
+                                    </ChildContent>
+                                </MudProgressCircular>
                             </MudStack>
 
                             <MudDivider Class="mb-5" />
 
                             <!-- BitLocker -->
-                            <MudStack Class="mt-3">
+                            <MudStack Spacing="2">
                                 @if (_state.BitlockerRecoveryKey is null)
                                 {
-                                    <MudText Typo="Typo.caption">
-                                        Ingen BitLocker-nøkkel funnet.
+                                    <MudText Typo="Typo.body2" Align="Align.Center" Class="mt-10">
+                                        Trykk <b>Hent nøkkel</b> i menyen for å hente BitLocker-nøkkelen.
                                     </MudText>
                                 }
                                 else
@@ -1067,11 +1083,11 @@
                                             </MudText>
                                         </MudItem>
                                         <MudItem xs="4">
-                                            <MudText Typo="Typo.body2"><b>Enhets-id:</b></MudText>
+                                            <MudText Typo="Typo.body2"><b>Nøkkel:</b></MudText>
                                         </MudItem>
                                         <MudItem xs="8">
                                             <MudText Typo="Typo.body2">
-                                                @UiFormat.TextOrFallback(_state.BitlockerRecoveryKey.DeviceId, "ukjent")
+                                                @UiFormat.TextOrFallback(_state.BitlockerRecoveryKey.Key, "ukjent")
                                             </MudText>
                                         </MudItem>
                                     </MudGrid>
@@ -1188,12 +1204,6 @@
                 // Fetch device isolation status from defender
                 if (results.DefenderDevice is not null)
                     results.IsIsolated = await _defenderService.GetIsolationStatusByMachineId(results.DefenderDevice.Id);
-
-                // Fetch BitLocker recovery key.
-                results.BitlockerRecoveryKey = await _intuneService.GetBitlockerRecoveryKeyByAzureAdDeviceIdAsync(results.ManagedDevice.AzureADDeviceId);
-
-                // Fetch LAPS password.
-                results.DeviceCredential = await _intuneService.GetLapsPasswordByAzureDeviceId(results.ManagedDevice.AzureADDeviceId);
 
                 // Fetch pureservice asset by serial number, then by id for full details
                 results.PureserviceAssetBySn = await _pureserviceService.GetAssetBySerialAsync(results.ManagedDevice.SerialNumber);
