@@ -166,6 +166,13 @@ builder.Services.AddSignalR(options =>
 
 var app = builder.Build();
 
+// Temporary debug logging
+var entraOptions = app.Configuration.GetSection("EntraId").Get<EntraIdOptions>();
+app.Logger.LogInformation("EntraId roles: User={User}, Admin={Admin}, Metrics={Metrics}",
+    entraOptions?.AppRoleUser,
+    entraOptions?.AppRoleAdmin,
+    entraOptions?.AppRoleMetrics);
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
@@ -192,8 +199,6 @@ app.UseAntiforgery();
 app.UseHttpMetrics();
 
 // Exposes collected metrics in Prometheus text format.
-// AllowAnonymous is required because the Prometheus scraper is a machine-to-machine process
-// with no user identity or token. Access should be restricted at the network level in Azure instead.
 app.MapGet("/metrics", async context =>
 {
     context.Response.ContentType = "text/plain; version=0.0.4";
