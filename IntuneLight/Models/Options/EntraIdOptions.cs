@@ -1,6 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace IntuneLight.Models.Options;
+﻿namespace IntuneLight.Models.Options;
 
 public sealed class EntraIdOptions
 {
@@ -12,4 +10,5 @@ public sealed class EntraIdOptions
     public string Authority => $"https://login.microsoftonline.com/{TenantId}";
     public string AppRoleUser { get; set; } = string.Empty;
     public string AppRoleAdmin { get; set; } = string.Empty;
+    public string AppRoleMetrics { get; set; } = string.Empty;
 }

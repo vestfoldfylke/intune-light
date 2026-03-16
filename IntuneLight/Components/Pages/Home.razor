@@ -16,7 +16,7 @@
    To restrict specific actions to Admin only, we wrap them in:
    <AuthorizeView Policy="@Policy.Admin"> ... </AuthorizeView> *@
 
-@attribute [Authorize(Policy = Policy.AnyRole)]
+@attribute [Authorize(Policy = Policy.AnyUserRole)]
 
 
 <PageTitle>Intune Light</PageTitle>

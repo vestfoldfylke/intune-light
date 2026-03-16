@@ -118,8 +118,7 @@ else
 }
 
 // Define authorization policies based on roles from EntraId options
-// This : [Authorize(Policy = Policy.Admin)]
-// Not  : [Authorize(Roles = Policy.User)]
+// [Authorize(Policy = Policy.Admin)]
 builder.Services.AddAuthorization(options =>
 {
     var entraOptions = builder.Configuration.GetSection("EntraId").Get<EntraIdOptions>();
@@ -129,9 +128,10 @@ builder.Services.AddAuthorization(options =>
         // Define policies that require specific roles from EntraId options
         options.AddPolicy(Policy.Admin, policy => policy.RequireRole(entraOptions.AppRoleAdmin));
         options.AddPolicy(Policy.User, policy => policy.RequireRole(entraOptions.AppRoleUser));
+        options.AddPolicy(Policy.Metrics, policy => policy.RequireRole(entraOptions.AppRoleMetrics));
 
         // Grants access to users with either role
-        options.AddPolicy(Policy.AnyRole, policy =>
+        options.AddPolicy(Policy.AnyUserRole, policy =>
             policy.RequireAssertion(ctx => 
                                     ctx.User.IsInRole(entraOptions.AppRoleAdmin) ||
                                     ctx.User.IsInRole(entraOptions.AppRoleUser)));
@@ -199,7 +199,7 @@ app.MapGet("/metrics", async context =>
     context.Response.ContentType = "text/plain; version=0.0.4";
     await Metrics.DefaultRegistry.CollectAndExportAsTextAsync(context.Response.Body);
 
-}).AllowAnonymous();
+}).RequireAuthorization(Policy.Metrics);
 
 // Debug endpoint (open in dev, protected in prod)
 if (app.Environment.IsDevelopment())
