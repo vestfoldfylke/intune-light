@@ -9,73 +9,125 @@ using Microsoft.Extensions.Options;
 namespace IntuneLight.Security;
 
 // Authentication handler for Azure App Service Easy Auth.
+// Supports both interactive users and app-only callers such as Prometheus.
 public class EasyAuthAuthenticationHandler(
     IOptionsMonitor<AuthenticationSchemeOptions> options,
     ILoggerFactory logger,
     UrlEncoder encoder) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
-    // The main authentication logic is implemented in HandleAuthenticateAsync, which is called by the authentication middleware.
+    // Reuse serializer options to avoid per-request allocations.
+    private static readonly JsonSerializerOptions _jsonSerializerOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
+    // Authenticates the current request using the Easy Auth principal header.
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        // Log the presence of EasyAuth headers for debugging purposes.
-        Logger.LogInformation("EasyAuth headers present: Principal={Principal}, Name={Name}, Id={Id}",
+        Logger.LogInformation(
+            "EasyAuth headers present: Principal={Principal}, Name={Name}, Id={Id}, Idp={Idp}",
             Request.Headers.ContainsKey("X-MS-CLIENT-PRINCIPAL"),
             Request.Headers.ContainsKey("X-MS-CLIENT-PRINCIPAL-NAME"),
-            Request.Headers.ContainsKey("X-MS-CLIENT-PRINCIPAL-ID"));
+            Request.Headers.ContainsKey("X-MS-CLIENT-PRINCIPAL-ID"),
+            Request.Headers.ContainsKey("X-MS-CLIENT-PRINCIPAL-IDP"));
 
-        // Check if the "X-MS-CLIENT-PRINCIPAL" header is present. If not, return no result to indicate that this handler did not authenticate the request.
-        if (!Request.Headers.TryGetValue("X-MS-CLIENT-PRINCIPAL", out var principal))
+        if (!Request.Headers.TryGetValue("X-MS-CLIENT-PRINCIPAL", out var principalHeader))
         {
             Logger.LogWarning("EasyAuth: X-MS-CLIENT-PRINCIPAL header not present.");
             return Task.FromResult(AuthenticateResult.NoResult());
         }
 
-        // Decode the base64-encoded JSON string from the header and deserialize it into a ClientPrincipal object.
-        var json = Encoding.UTF8.GetString(Convert.FromBase64String(principal!));
+        ClientPrincipal? payload;
 
-        // Deserialize the JSON into a ClientPrincipal object. If deserialization fails, log an error and return no result.
-        var payload = JsonSerializer.Deserialize<ClientPrincipal>(json);
-        if (payload == null)
+        try
         {
-            Logger.LogError("EasyAuth: Failed to deserialize principal JSON.");
-            return Task.FromResult(AuthenticateResult.NoResult());
+            // Decode the Base64-encoded principal payload from Easy Auth.
+            var json = Encoding.UTF8.GetString(Convert.FromBase64String(principalHeader!));
+
+            // Deserialize the Easy Auth principal payload.
+            payload = JsonSerializer.Deserialize<ClientPrincipal>(json, _jsonSerializerOptions);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "EasyAuth: Failed to decode or deserialize X-MS-CLIENT-PRINCIPAL.");
+            return Task.FromResult(AuthenticateResult.Fail("Invalid Easy Auth principal header."));
         }
 
-        // Define the claim types we care about.
-        var relevantTypes = new HashSet<string>
+        if (payload is null)
         {
-            "http://schemas.microsoft.com/identity/claims/objectidentifier",
-            "preferred_username",
-            "name",
-            "roles"
-        };
+            Logger.LogError("EasyAuth: Principal payload was null after deserialization.");
+            return Task.FromResult(AuthenticateResult.Fail("Invalid Easy Auth principal payload."));
+        }
 
-        // Extract the relevant claims from the payload and create a list of Claim objects.
-        var claims = payload.Claims
-            .Where(c => relevantTypes.Contains(c.Typ))
+        // Convert all incoming claims from Easy Auth into Claim objects.
+        var claims = payload.Claims?
+            .Where(c => !string.IsNullOrWhiteSpace(c.Typ) && !string.IsNullOrWhiteSpace(c.Val))
             .Select(c => new Claim(c.Typ, c.Val))
             .ToList() ?? [];
 
-        // Easy Auth provides the claims, so we can trust them and set the authentication type to "EasyAuth".
-        var identity = new ClaimsIdentity(claims, "EasyAuth",
-            nameType: "preferred_username",
-            roleType: "roles");
+        // Build identity using the claim types provided by Easy Auth.
+        var identity = new ClaimsIdentity(
+            claims,
+            authenticationType: Scheme.Name,
+            nameType: payload.NameTyp ?? ClaimTypes.Name,
+            roleType: payload.RoleTyp ?? ClaimTypes.Role);
 
-        // Log the role checks for Metrics, User, and Admin roles to verify that the ClaimsPrincipal is correctly interpreting the roles.
-        Logger.LogInformation("EasyAuth: IsInRole Metrics={Metrics}, User={User}, Admin={Admin}",
-        new ClaimsPrincipal(identity).IsInRole("Metrics"),
-        new ClaimsPrincipal(identity).IsInRole("User"),
-        new ClaimsPrincipal(identity).IsInRole("Admin"));
+        var principal = new ClaimsPrincipal(identity);
 
-        // Create an authentication ticket with the ClaimsPrincipal and return success.
-        var ticket = new AuthenticationTicket(new ClaimsPrincipal(identity), "EasyAuth");
+        var roleClaims = claims
+            .Where(c =>
+                string.Equals(c.Type, identity.RoleClaimType, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(c.Type, "roles", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(c.Type, ClaimTypes.Role, StringComparison.OrdinalIgnoreCase))
+            .Select(c => c.Value)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        // Extract app-only related claims for Prometheus debugging.
+        var hasAppId = claims.Any(c =>
+            string.Equals(c.Type, "appid", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(c.Type, "azp", StringComparison.OrdinalIgnoreCase));
+
+        var hasObjectId = claims.Any(c =>
+            string.Equals(c.Type, "oid", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(c.Type, "http://schemas.microsoft.com/identity/claims/objectidentifier", StringComparison.OrdinalIgnoreCase));
+
+        var idType = claims.FirstOrDefault(c =>
+            string.Equals(c.Type, "idtyp", StringComparison.OrdinalIgnoreCase))?.Value;
+
+        Logger.LogInformation(
+            "EasyAuth auth summary: AuthType={AuthType}, NameType={NameType}, RoleType={RoleType}, ClaimCount={ClaimCount}",
+            payload.AuthTyp ?? "(unknown)",
+            identity.NameClaimType,
+            identity.RoleClaimType,
+            claims.Count);
+
+        Logger.LogInformation(
+            "EasyAuth app summary: HasAppId={HasAppId}, HasObjectId={HasObjectId}, IdType={IdType}",
+            hasAppId,
+            hasObjectId,
+            idType ?? "(none)");
+
+        Logger.LogInformation(
+            "EasyAuth role evaluation: Roles={Roles}, Metrics={Metrics}, User={User}, Admin={Admin}",
+            roleClaims.Count > 0 ? string.Join(", ", roleClaims) : "(none)",
+            principal.IsInRole("IntuneLight.Metrics"),
+            principal.IsInRole("IntuneLight.User"),
+            principal.IsInRole("IntuneLight.Admin"));
+
+        var ticket = new AuthenticationTicket(principal, Scheme.Name);
         return Task.FromResult(AuthenticateResult.Success(ticket));
     }
 }
 
-record ClientPrincipal(
-    [property: JsonPropertyName("claims")] List<ClientPrincipalClaim> Claims);
+// Represents the decoded Easy Auth principal payload.
+public sealed record ClientPrincipal(
+    [property: JsonPropertyName("auth_typ")] string? AuthTyp,
+    [property: JsonPropertyName("name_typ")] string? NameTyp,
+    [property: JsonPropertyName("role_typ")] string? RoleTyp,
+    [property: JsonPropertyName("claims")] List<ClientPrincipalClaim>? Claims);
 
-record ClientPrincipalClaim(
+// Represents a single claim in the Easy Auth principal payload.
+public sealed record ClientPrincipalClaim(
     [property: JsonPropertyName("typ")] string Typ,
     [property: JsonPropertyName("val")] string Val);

@@ -168,9 +168,10 @@ var app = builder.Build();
 
 // Temporary debug logging
 var entraOptions = app.Configuration.GetSection("EntraId").Get<EntraIdOptions>();
-app.Logger.LogInformation("EntraId roles: User={User}, Admin={Admin}, Metrics={Metrics}",
-    entraOptions?.AppRoleUser,
+app.Logger.LogInformation(
+    "Authorization policy roles configured: Admin={AdminRole}, User={UserRole}, Metrics={MetricsRole}",
     entraOptions?.AppRoleAdmin,
+    entraOptions?.AppRoleUser,
     entraOptions?.AppRoleMetrics);
 
 // Configure the HTTP request pipeline.
