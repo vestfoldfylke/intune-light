@@ -68,9 +68,9 @@ public class EasyAuthAuthenticationHandler(
         // Build identity using the claim types provided by Easy Auth.
         var identity = new ClaimsIdentity(
             claims,
-            authenticationType: Scheme.Name,
-            nameType: payload.NameTyp ?? ClaimTypes.Name,
-            roleType: payload.RoleTyp ?? ClaimTypes.Role);
+            authenticationType: "EasyAuth",
+            nameType: "preferred_username",
+            roleType: "roles");
 
         var principal = new ClaimsPrincipal(identity);
 
