@@ -118,7 +118,6 @@ else
 }
 
 // Define authorization policies based on roles from EntraId options
-// [Authorize(Policy = Policy.Admin)]
 builder.Services.AddAuthorization(options =>
 {
     var entraOptions = builder.Configuration.GetSection("EntraId").Get<EntraIdOptions>();
@@ -191,7 +190,6 @@ app.UseRouting();
 
 // AuthN/Z must be after routing but before endpoints
 app.UseAuthentication();
-app.UseAuthorization();
 
 // Logs authorization-related details for the /metrics endpoint.
 app.Use(async (context, next) =>
@@ -226,6 +224,8 @@ app.Use(async (context, next) =>
         await next();
     }
 });
+
+app.UseAuthorization();
 
 // Antiforgery must be after routing (and after auth if present)
 app.UseAntiforgery();
