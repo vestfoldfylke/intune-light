@@ -193,6 +193,40 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Logs authorization-related details for the /metrics endpoint.
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/metrics"))
+    {
+        var logger = context.RequestServices
+            .GetRequiredService<ILoggerFactory>()
+            .CreateLogger("MetricsTrace");
+
+        logger.LogInformation(
+            "Metrics request started: Path={Path}, Authenticated={Authenticated}, Name={Name}",
+            context.Request.Path,
+            context.User.Identity?.IsAuthenticated ?? false,
+            context.User.Identity?.Name ?? "(no name)");
+
+        logger.LogInformation(
+            "Metrics role check before pipeline: Metrics={Metrics}, User={User}, Admin={Admin}",
+            context.User.IsInRole("IntuneLight.Metrics"),
+            context.User.IsInRole("IntuneLight.User"),
+            context.User.IsInRole("IntuneLight.Admin"));
+
+        await next();
+
+        logger.LogInformation(
+            "Metrics request finished: Path={Path}, StatusCode={StatusCode}",
+            context.Request.Path,
+            context.Response.StatusCode);
+    }
+    else
+    {
+        await next();
+    }
+});
+
 // Antiforgery must be after routing (and after auth if present)
 app.UseAntiforgery();
 
