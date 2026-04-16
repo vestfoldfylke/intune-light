@@ -16,7 +16,7 @@ public sealed class PureserviceTicket
     public DateTime? Resolved { get; set; }
     public DateTime? Reopened { get; set; }
     public DateTime? Closed { get; set; }
-    public DateTime UserWaitedSince { get; set; }
+    public DateTimeOffset? UserWaitedSince { get; set; }
     public DateTime? UserReminded { get; set; }
     public DateTime? PendingUserSince { get; set; }
     public bool IsMarkedForDeletion { get; set; }

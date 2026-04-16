@@ -1,4 +1,5 @@
-﻿using IntuneLight.Models.Defender;
+﻿using IntuneLight.Infrastructure;
+using IntuneLight.Models.Defender;
 using IntuneLight.Models.Entra;
 using IntuneLight.Models.Intune;
 using IntuneLight.Models.Pureservice;
@@ -104,6 +105,7 @@ public sealed class DeviceLookupState
         IsIsolated = false;
         EntraDeviceCount = null;
         IsSearchSerialTouched = false;
+        HasSearched = false;
         NotifyStateChanged();
     }
 
@@ -174,6 +176,22 @@ public sealed class DeviceLookupState
         
         return string.Empty;
     }
+
+    #endregion
+
+    #region Audit
+
+    // Builds an AuditContext from current device lookup state.
+    public AuditContext BuildAuditContext() => new()
+    {
+        DeviceId = ManagedDevice?.AzureADDeviceId,
+        DeviceName = ManagedDevice?.DeviceName
+            ?? DefenderDevice?.ComputerDnsName
+            ?? AutopilotDevice?.SerialNumber,
+        DeviceOwner = EntraUser?.UserPrincipalName
+            ?? EntraUser?.DisplayName
+            ?? "Ukjent"
+    };
 
     #endregion
 }

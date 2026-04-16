@@ -1,4 +1,3 @@
-using System.Globalization;
 using IntuneLight.Components;
 using IntuneLight.Diagnostics;
 using IntuneLight.Infrastructure;
@@ -7,11 +6,13 @@ using IntuneLight.Security;
 using IntuneLight.Services;
 using IntuneLight.Services.State;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Options;
 using MudBlazor;
 using MudBlazor.Services;
 using Prometheus;
 using Serilog;
+using System.Globalization;
 using Vestfold.Extensions.Logging;
 using Vestfold.Extensions.Metrics;
 
@@ -165,14 +166,6 @@ builder.Services.AddSignalR(options =>
 
 var app = builder.Build();
 
-// Temporary debug logging
-var entraOptions = app.Configuration.GetSection("EntraId").Get<EntraIdOptions>();
-app.Logger.LogInformation(
-    "Authorization policy roles configured: Admin={AdminRole}, User={UserRole}, Metrics={MetricsRole}",
-    entraOptions?.AppRoleAdmin,
-    entraOptions?.AppRoleUser,
-    entraOptions?.AppRoleMetrics);
-
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
@@ -188,78 +181,15 @@ app.UseSerilogRequestLogging();
 
 app.UseRouting();
 
+// Trust forwarded headers from Azure reverse proxy
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
+
 // AuthN/Z must be after routing but before endpoints
 app.UseAuthentication();
-
-// Logs authorization-related details for the /metrics endpoint.
-app.Use(async (context, next) =>
-{
-    if (context.Request.Path.StartsWithSegments("/metrics"))
-    {
-        var logger = context.RequestServices
-            .GetRequiredService<ILoggerFactory>()
-            .CreateLogger("MetricsTrace");
-
-        logger.LogInformation(
-            "Metrics request started: Path={Path}, Authenticated={Authenticated}, Name={Name}",
-            context.Request.Path,
-            context.User.Identity?.IsAuthenticated ?? false,
-            context.User.Identity?.Name ?? "(no name)");
-
-        logger.LogInformation(
-            "Metrics role check before pipeline: Metrics={Metrics}, User={User}, Admin={Admin}",
-            context.User.IsInRole("IntuneLight.Metrics"),
-            context.User.IsInRole("IntuneLight.User"),
-            context.User.IsInRole("IntuneLight.Admin"));
-
-        await next();
-
-        logger.LogInformation(
-            "Metrics request finished: Path={Path}, StatusCode={StatusCode}",
-            context.Request.Path,
-            context.Response.StatusCode);
-    }
-    else
-    {
-        await next();
-    }
-});
-
 app.UseAuthorization();
-
-// Logs authorization-related details for the /metrics endpoint.
-app.Use(async (context, next) =>
-{
-    if (context.Request.Path.StartsWithSegments("/metrics"))
-    {
-        var logger = context.RequestServices
-            .GetRequiredService<ILoggerFactory>()
-            .CreateLogger("MetricsTrace");
-
-        logger.LogInformation(
-            "Metrics request started: Path={Path}, Authenticated={Authenticated}, Name={Name}",
-            context.Request.Path,
-            context.User.Identity?.IsAuthenticated ?? false,
-            context.User.Identity?.Name ?? "(no name)");
-
-        logger.LogInformation(
-            "Metrics role check before pipeline: Metrics={Metrics}, User={User}, Admin={Admin}",
-            context.User.IsInRole("IntuneLight.Metrics"),
-            context.User.IsInRole("IntuneLight.User"),
-            context.User.IsInRole("IntuneLight.Admin"));
-
-        await next();
-
-        logger.LogInformation(
-            "Metrics request finished: Path={Path}, StatusCode={StatusCode}",
-            context.Request.Path,
-            context.Response.StatusCode);
-    }
-    else
-    {
-        await next();
-    }
-});
 
 // Antiforgery must be after routing (and after auth if present)
 app.UseAntiforgery();

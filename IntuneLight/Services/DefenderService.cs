@@ -4,25 +4,25 @@ using System.Text;
 using System.Text.Json;
 using IntuneLight.Infrastructure;
 using IntuneLight.Models.Defender;
-using Vestfold.Extensions.Metrics.Services;
 
 namespace IntuneLight.Services;
 
 public interface IDefenderService
 {
+    Task AddMachineTagAsync(string machineId, string tag);
     Task<DefenderDevice?> GetDeviceByAadDeviceIdAsync(string aadDeviceId);
     Task<DefenderDevice?> GetDeviceByHostnameAsync(string hostname);
     Task<bool> GetIsolationStatusByMachineId(string machineId);
-    Task<DefenderScanResult> RunAntiVirusScanAsync(string machineId, DefenderScanType scanType, string? comment = null);
+    Task RemoveMachineTagAsync(string machineId, string tag);
+    Task<DefenderScanResult> RunAntiVirusScanAsync(string machineId, DefenderScanType scanType, AuditContext audit, string? comment = null);
 }
 
-public sealed class DefenderService(IHttpClientFactory httpClientFactory, ITokenService tokenService, IApiResponseGuard guard, IMetricsService metricsService) : IDefenderService
+public sealed class DefenderService(IHttpClientFactory httpClientFactory, ITokenService tokenService, IApiResponseGuard guard) : IDefenderService
 {
     // Dependencies
     private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
     private readonly ITokenService _tokenService = tokenService;
     private readonly IApiResponseGuard _guard = guard;
-    private readonly IMetricsService _metricsService = metricsService;
 
     // JSON serializer options
     private readonly JsonSerializerOptions _jsonSerializerOptions = new() { PropertyNameCaseInsensitive = true };
@@ -162,7 +162,12 @@ public sealed class DefenderService(IHttpClientFactory httpClientFactory, IToken
     #region Post requests
 
     // Runs a Defender for Endpoint antivirus scan (quick or full) on a machine.
-    public async Task<DefenderScanResult> RunAntiVirusScanAsync(string machineId, DefenderScanType scanType, string? comment = null)
+    public async Task<DefenderScanResult> RunAntiVirusScanAsync
+    (   string machineId, 
+        DefenderScanType scanType,
+        AuditContext audit,
+        string? comment = null
+    )
     {
         // Validate input
         UiValidation.RequireNotNullOrWhiteSpace(
@@ -201,10 +206,80 @@ public sealed class DefenderService(IHttpClientFactory httpClientFactory, IToken
             return DefenderScanResult.AlreadyRunning;
 
         // Ensure success (If successful, this method returns 201, Created response code and MachineAction object in the response body.)
-        _guard.EnsureSuccess(response, SystemNames.DefenderAvScan, url, content);
+        _guard.EnsureSuccess(response, SystemNames.DefenderAvScan, url, content, audit);
 
         // If we reach here, the scan was started successfully
         return DefenderScanResult.Started;
+    }
+
+    // Adds a tag to a Defender machine. One tag per call — call twice for multiple tags.
+    public async Task AddMachineTagAsync(string machineId, string tag)
+    {
+        // Validate input
+        UiValidation.RequireNotNullOrWhiteSpace(
+            machineId,
+            nameof(machineId),
+            systemName: SystemNames.DefenderTag,
+            userMessage: "Maskin-ID kan ikke være tom.");
+
+        // Create named HTTP client and fetch token
+        var client = _httpClientFactory.CreateClient("Defender");
+        var token = await _tokenService.GetDefenderTokenAsync();
+
+        // Set the Authorization header with the Bearer token
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        // Build the request URL
+        var url = $"api/machines/{Uri.EscapeDataString(machineId)}/tags";
+
+        // Build request body
+        var payload = new { Value = tag, Action = "Add" };
+
+        // Serialize payload to JSON
+        var json = JsonSerializer.Serialize(payload, _jsonSerializerOptions);
+        using var httpContent = new StringContent(json, Encoding.UTF8, "application/json");
+
+        // Send the POST request
+        var response = await client.PostAsync(url, httpContent);
+        var content = await response.Content.ReadAsStringAsync();
+
+        // Ensure success
+        _guard.EnsureSuccess(response, SystemNames.DefenderTag, url, content);
+    }
+
+    // Removes a tag from a Defender machine.
+    public async Task RemoveMachineTagAsync(string machineId, string tag)
+    {
+        // Validate input
+        UiValidation.RequireNotNullOrWhiteSpace(
+            machineId,
+            nameof(machineId),
+            systemName: SystemNames.DefenderTag,
+            userMessage: "Maskin-ID kan ikke være tom.");
+
+        // Create named HTTP client and fetch token
+        var client = _httpClientFactory.CreateClient("Defender");
+        var token = await _tokenService.GetDefenderTokenAsync();
+
+        // Set the Authorization header with the Bearer token
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        // Build the request URL
+        var url = $"api/machines/{Uri.EscapeDataString(machineId)}/tags";
+
+        // Build request body
+        var payload = new { Value = tag, Action = "Remove" };
+        
+        // Serialize payload to JSON
+        var json = JsonSerializer.Serialize(payload, _jsonSerializerOptions);
+        using var httpContent = new StringContent(json, Encoding.UTF8, "application/json");
+
+        // Send the POST request
+        var response = await client.PostAsync(url, httpContent);
+        var content = await response.Content.ReadAsStringAsync();
+
+        // Ensure success
+        _guard.EnsureSuccess(response, SystemNames.DefenderTag, url, content);
     }
 
     #endregion

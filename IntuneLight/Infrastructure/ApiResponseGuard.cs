@@ -1,6 +1,8 @@
-﻿using System.Collections.Frozen;
-using IntuneLight.Models.ApiError;
+﻿using IntuneLight.Models.ApiError;
 using IntuneLight.Security;
+using Serilog.Context;
+using System.Collections.Frozen;
+using System.Diagnostics;
 using Vestfold.Extensions.Metrics.Services;
 
 namespace IntuneLight.Infrastructure;
@@ -9,22 +11,27 @@ public interface IApiResponseGuard
 {
     bool EnsureBinaryBody(byte[] content, string systemName, string url, int statusCode);
     bool EnsureJsonBody(string body, string systemName, string url, int statusCode);
-    void EnsureSuccess(HttpResponseMessage response, string systemName, string url, string body);
-    bool EnsureSuccessOrNoData(HttpResponseMessage response, string systemName, string url, string body);
+    void EnsureSuccess(HttpResponseMessage response, string systemName, string url, string body, AuditContext? audit = null);
+    bool EnsureSuccessOrNoData(HttpResponseMessage response, string systemName, string url, string body, AuditContext? audit = null);
 }
+
 
 // Guards API responses and throws structured exceptions on failure.
 public class ApiResponseGuard(
     ILogger<ApiResponseGuard> logger,
     IMetricsService metricsService,
-    UserContext userContext) : IApiResponseGuard
+    UserContext userContext,
+    IHttpContextAccessor httpContextAccessor) : IApiResponseGuard
 {
     private readonly ILogger<ApiResponseGuard> _logger = logger;
     private readonly IMetricsService _metricsService = metricsService;
     private readonly UserContext _userContext = userContext;
+    private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+
+    #region Public methods
 
     // Throws an ApiException for non-success HTTP responses (4xx/5xx).
-    public void EnsureSuccess(HttpResponseMessage response, string systemName, string url, string body)
+    public void EnsureSuccess(HttpResponseMessage response, string systemName, string url, string body, AuditContext? audit = null)
     {
         // Extract method for potential use in metrics
         var method = response.RequestMessage?.Method;
@@ -33,7 +40,7 @@ public class ApiResponseGuard(
         // Log success metrics for POST/DELETE operations
         if (response.IsSuccessStatusCode)
         {
-            if (metricBase != null && (method == HttpMethod.Post || method == HttpMethod.Delete))
+            if (metricBase != null && (method == HttpMethod.Post || method == HttpMethod.Delete || method == HttpMethod.Put))
             {
                 _metricsService.Count(
                     "intunelight_http_requests_total",
@@ -43,19 +50,29 @@ public class ApiResponseGuard(
                     ("status", "success")
                 );
 
-                _logger.LogInformation(
-                    "Actor {Actor} performed {Method} on {System}. Url: {Url}.",
-                    _userContext.Actor,
-                    method.Method,
-                    systemName,
-                    url);
+                // Only audit-relevant systems go to Azure
+                if (ActionTypeMap.ContainsKey(systemName))
+                {
+                    using (PushAuditContext(systemName, "Success", audit))
+                    {
+                        _logger.LogInformation(
+                            "Actor {Actor} performed {Method} on {System}. Url: {Url}.",
+                            _userContext.Actor, method.Method, systemName, url);
+                    }
+                }
+                else
+                {
+                    _logger.LogInformation(
+                        "Actor {Actor} performed {Method} on {System}. Url: {Url}.",
+                        _userContext.Actor, method.Method, systemName, url);
+                }
             }
 
             return;
         }
 
         // Log failure metrics for POST/DELETE operations
-        if (metricBase != null && (method == HttpMethod.Post || method == HttpMethod.Delete))
+        if (metricBase != null && (method == HttpMethod.Post || method == HttpMethod.Delete || method == HttpMethod.Put))
         {
             _metricsService.Count(
                 "intunelight_http_requests_total",
@@ -90,15 +107,14 @@ public class ApiResponseGuard(
     }
 
     // Ensures the response is successful or represents valid "no data".
-    public bool EnsureSuccessOrNoData(HttpResponseMessage response, string systemName, string url, string body)
+    public bool EnsureSuccessOrNoData(HttpResponseMessage response, string systemName, string url, string body, AuditContext? audit = null)
     {
         // Extract method for potential use in metrics
         var method = response.RequestMessage?.Method;
         var metricBase = MetricsOperationMap.TryGetMetricBase(systemName);
 
         // Treat these as "no data" in search/enrichment flows
-        if (response.StatusCode == System.Net.HttpStatusCode.NotFound ||
-            response.StatusCode == System.Net.HttpStatusCode.NoContent)
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound || response.StatusCode == System.Net.HttpStatusCode.NoContent)
         {
             _logger.LogInformation(
                 "API call to {System} returned no data. Status {StatusCode}. Url: {Url}.",
@@ -123,11 +139,13 @@ public class ApiResponseGuard(
                 ("status", "success")
             );
 
-            _logger.LogInformation(
-                "Actor {Actor} retrieved {System} credentials. Url: {Url}.",
-                _userContext.Actor,
-                systemName,
-                url);
+            // Wrap credential retrieval as security audit
+            using (PushAuditContext(systemName, "Success", audit))
+            {
+                _logger.LogInformation(
+                    "Actor {Actor} retrieved {System} credentials. Url: {Url}.",
+                    _userContext.Actor, systemName, url);
+            }
 
             return true;
         }
@@ -143,11 +161,22 @@ public class ApiResponseGuard(
                 ("status", "success")
             );
 
-            // Log the successful search action for IntuneDevice lookups
-            _logger.LogInformation(
-                "Actor {Actor} searched for device. Url: {Url}.",
-                _userContext.Actor,
-                url);
+            // Only send to Azure if system is audit-relevant
+            if (ActionTypeMap.ContainsKey(systemName))
+            {
+                using (PushAuditContext(systemName, "Success", audit))
+                {
+                    _logger.LogInformation(
+                        "Actor {Actor} searched for device. Url: {Url}.",
+                        _userContext.Actor, url);
+                }
+            }
+            else
+            {
+                _logger.LogInformation(
+                    "Actor {Actor} searched for device. Url: {Url}.",
+                    _userContext.Actor, url);
+            }
         }
         
         return true;
@@ -185,22 +214,29 @@ public class ApiResponseGuard(
         return false;
     }
 
+    #endregion
+
+    #region Internal helpers
+
     internal static class MetricsOperationMap
     {
         private static readonly FrozenDictionary<string, string> Map =
             new Dictionary<string, string>(StringComparer.Ordinal)
             {
-                [SystemNames.DefenderAvScan]        = "defender_av_scan",
-                [SystemNames.EntraDeviceDelete]     = "entra_device_delete",
-                [SystemNames.IntuneDeviceSync]      = "intune_device_sync",
-                [SystemNames.IntuneDeviceWipe]      = "intune_device_wipe",
-                [SystemNames.IntuneAutopilotTag]    = "intune_autopilot_tag",
-                [SystemNames.IntuneLapsRotate]      = "intune_laps_rotate",
-                [SystemNames.IntuneDeviceDelete]    = "intune_device_delete",
-                [SystemNames.IntuneAutopilotDelete] = "intune_autopilot_delete",
-                [SystemNames.IntuneDevice]          = "intune_device_lookup",
-                [SystemNames.IntuneLaps]            = "intune_laps",
-                [SystemNames.IntuneBitlocker]       = "intune_bitlocker"
+                [SystemNames.DefenderAvScan]                 = "defender_av_scan",
+                [SystemNames.EntraDeviceDelete]              = "entra_device_delete",
+                [SystemNames.IntuneDeviceSync]               = "intune_device_sync",
+                [SystemNames.IntuneDeviceWipe]               = "intune_device_wipe",
+                [SystemNames.IntuneAutopilotTag]             = "intune_autopilot_tag",
+                [SystemNames.IntuneLapsRotate]               = "intune_laps_rotate",
+                [SystemNames.IntuneDeviceDelete]             = "intune_device_delete",
+                [SystemNames.IntuneAutopilotDelete]          = "intune_autopilot_delete",
+                [SystemNames.IntuneDevice]                   = "intune_device_lookup",
+                [SystemNames.IntuneLaps]                     = "intune_laps",
+                [SystemNames.IntuneBitlocker]                = "intune_bitlocker",
+                [SystemNames.DefenderTag]                    = "defender_tag",
+                [SystemNames.PureserviceOffboardingTicket]   = "pureservice_offboarding_ticket",
+                [SystemNames.PureserviceAssetStatus]         = "pureservice_asset_status"
 
             }.ToFrozenDictionary();
 
@@ -215,4 +251,60 @@ public class ApiResponseGuard(
         SystemNames.IntuneLaps,
         SystemNames.IntuneBitlocker
     }.ToFrozenSet(StringComparer.Ordinal);
+
+    // Maps system names to DCR-defined ActionType values.
+    internal static readonly FrozenDictionary<string, string> ActionTypeMap =
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            // Credential access
+            [SystemNames.IntuneLaps] = "LAPSPasswordRead",
+            [SystemNames.IntuneLapsRotate] = "LAPSPasswordRotate",
+            [SystemNames.IntuneBitlocker] = "BitLockerKeyRead",
+            [SystemNames.IntuneRemoteAssistance] = "RemoteAssistance",
+
+            // Destructive device actions
+            [SystemNames.IntuneDeviceWipe] = "RemoteWipe",
+            [SystemNames.IntuneDeviceDelete] = "DeviceDelete",
+            [SystemNames.EntraDeviceDelete] = "EntraDeviceDelete",
+            [SystemNames.IntuneAutopilotDelete] = "AutopilotDelete",
+
+            // Defender response actions
+            [SystemNames.DefenderAvScan] = "DefenderAvScan"
+        }.ToFrozenDictionary();
+
+    // Pushes all required audit properties to log context for Azure Log Analytics ingestion.
+    internal IDisposable PushAuditContext(string systemName, string resultStatus, AuditContext? audit = null) =>
+        new CompositeDisposable(
+            LogContext.PushProperty(Vestfold.Extensions.Logging.Constants.Properties.SecurityAudit, true),
+            LogContext.PushProperty("ActionType", ActionTypeMap.TryGetValue(systemName, out var actionType) ? actionType : systemName),
+            LogContext.PushProperty("UserPrincipalName", _userContext.Actor),
+            LogContext.PushProperty("TargetDeviceName", audit?.DeviceName ?? string.Empty),
+            LogContext.PushProperty("TargetDeviceId", audit?.DeviceId ?? string.Empty),
+            LogContext.PushProperty("TargetDeviceOwner", audit?.DeviceOwner ?? string.Empty),
+            LogContext.PushProperty("SourceIPAddress", GetClientIp() ?? string.Empty),
+            LogContext.PushProperty("ResultStatus", resultStatus),
+            LogContext.PushProperty("CorrelationId", Activity.Current?.Id ?? _httpContextAccessor.HttpContext?.TraceIdentifier ?? string.Empty)
+        );
+
+    // Combines multiple IDisposables into one for use in using statements.
+    internal sealed class CompositeDisposable(params IDisposable[] disposables) : IDisposable
+    {
+        public void Dispose()
+        {
+            foreach (var d in disposables)
+                d.Dispose();
+        }
+    }
+
+    // Retrieves the client's IP address, accounting for proxies (X-Forwarded-For) and falling back to remote IP.
+    private string? GetClientIp()
+    {
+        var forwarded = _httpContextAccessor.HttpContext?.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(forwarded))
+            return forwarded.Split(',')[0].Trim();
+
+        return _httpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString();
+    }
+
+    #endregion
 }
