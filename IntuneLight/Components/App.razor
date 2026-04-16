@@ -28,6 +28,14 @@
     <script src="_framework/blazor.web.js"></script>
     <script src=@Assets["_content/MudBlazor/MudBlazor.min.js"] defer></script>
     <script src=@Assets["js/app.js"] defer></script>
+
+    <!--Prevent close/refresh  -->
+    <script>
+        window.addEventListener('beforeunload', (event) => {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            event.returnValue = 'Er du sikker på at du vil stenge l\'application ?'; });
+    </script>
 </body>
 
 </html>

@@ -9,6 +9,7 @@ public sealed class PureserviceUserSearchResponse
 // Minimal user model from Pureservice for lookup.
 public sealed class PureserviceUser
 {
+    public int Id { get; set; }
     public string FullName { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string Location { get; set; } = string.Empty;
@@ -16,6 +17,7 @@ public sealed class PureserviceUser
     public bool IsSuperuser { get; set; }
     public DateTime Created { get; set; }
     public DateTime Modified { get; set; }
+    public int? CompanyDepartmentId { get; set; }
 
     // Raw JSON payload for troubleshooting / raw viewer
     public string RawJson { get; set; } = "";

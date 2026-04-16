@@ -26,6 +26,7 @@ public sealed class ManagedDevice
     public string WiFiMacAddress { get; set; } = "";
     public long TotalStorageSpaceInBytes { get; set; }
     public long FreeStorageSpaceInBytes { get; set; }
+    public List<DeviceActionResult>? DeviceActionResults { get; set; }
 
     // Raw JSON payload for troubleshooting / raw viewer
     public string RawJson { get; set; } = "";
@@ -34,5 +35,13 @@ public sealed class ManagedDevice
 public sealed class GraphManagedDeviceListResponse
 {
     public List<ManagedDevice> Value { get; set; } = [];
+}
+
+public sealed class DeviceActionResult
+{
+    public string? ActionName { get; set; }
+    public string? ActionState { get; set; }
+    public DateTimeOffset? StartDateTime { get; set; }
+    public DateTimeOffset? LastUpdatedDateTime { get; set; }
 }
 

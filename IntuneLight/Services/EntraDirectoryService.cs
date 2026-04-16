@@ -8,7 +8,7 @@ namespace IntuneLight.Services;
 
 public interface IEntraDirectoryService
 {
-    Task DeleteDeviceByAzureAdDeviceIdAsync(string azureAdDeviceId);
+    Task DeleteDeviceByAzureAdDeviceIdAsync(string azureAdDeviceId, AuditContext audit);
     Task<EntraDevice?> GetDeviceByAzureAdDeviceIdAsync(string azureAdDeviceId);
     Task<EntraDeviceCount?> GetRegisteredDevicesForUser(string userId);
     Task<EntraUser?> GetUserByUpnAsync(string upn);
@@ -220,13 +220,12 @@ public sealed class EntraDirectoryService(IHttpClientFactory httpClientFactory, 
         return entraDeviceCount;
     }
 
-
     #endregion
 
     #region Delete requests
 
     // Permanently deletes an Entra device from Microsoft Graph using the Azure AD device id.
-    public async Task DeleteDeviceByAzureAdDeviceIdAsync(string azureAdDeviceId)
+    public async Task DeleteDeviceByAzureAdDeviceIdAsync(string azureAdDeviceId, AuditContext audit)
     {
         // Validate input
         UiValidation.RequireNotNullOrWhiteSpace(
@@ -250,7 +249,7 @@ public sealed class EntraDirectoryService(IHttpClientFactory httpClientFactory, 
         var content = await response.Content.ReadAsStringAsync();
 
         // Ensure success using ApiResponseGuard
-        _guard.EnsureSuccess(response, SystemNames.EntraDeviceDelete, url, content);
+        _guard.EnsureSuccess(response, SystemNames.EntraDeviceDelete, url, content, audit);
     }
 
 

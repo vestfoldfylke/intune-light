@@ -8,17 +8,18 @@ namespace IntuneLight.Services;
 
 public interface IIntuneService
 {
-    Task DeleteAutopilotDeviceAsync(string autopilotDeviceId);
-    Task DeleteManagedDeviceAsync(string managedDeviceId);
+    Task DeleteAutopilotDeviceAsync(string autopilotDeviceId, AuditContext audit);
+    Task DeleteManagedDeviceAsync(string managedDeviceId, AuditContext audit);
     Task<AutopilotDevice?> GetAutopilotDeviceBySerialAsync(string serialNumber);
-    Task<BitlockerRecoveryKey?> GetBitlockerRecoveryKeyByAzureAdDeviceIdAsync(string azureAdDeviceId);
+    Task<BitlockerRecoveryKey?> GetBitlockerRecoveryKeyByAzureAdDeviceIdAsync(string azureAdDeviceId, AuditContext audit);
+    Task<ManagedDevice?> GetDeviceByIdAsync(string deviceId);
     Task<ManagedDevice?> GetDeviceBySerialAsync(string serialNumber);
-    Task<DeviceCredential?> GetLapsPasswordByAzureDeviceId(string azureAdDeviceId);
-    Task RequestRemoteAssistanceAsync(string managedDeviceId);
-    Task RotateLocalAdminPasswordAsync(string managedDeviceId);
+    Task<DeviceCredential?> GetLapsPasswordByAzureDeviceId(string azureAdDeviceId, AuditContext audit);
+    Task RequestRemoteAssistanceAsync(string managedDeviceId, AuditContext audit);
+    Task RotateLocalAdminPasswordAsync(string managedDeviceId, AuditContext audit);
     Task SyncManagedDeviceAsync(string managedDeviceId);
     Task UpdateAutopilotGroupTagAsync(string autopilotDeviceId, string groupTag);
-    Task WipeManagedDeviceAsync(string managedDeviceId);
+    Task WipeManagedDeviceAsync(string managedDeviceId, AuditContext audit);
 }
 
 public sealed class IntuneService(IHttpClientFactory httpClientFactory, ITokenService tokenService, IApiResponseGuard guard) : IIntuneService
@@ -78,8 +79,48 @@ public sealed class IntuneService(IHttpClientFactory httpClientFactory, ITokenSe
         return intuneDevice;
     }
 
+    // Fetches a managed device by its Intune device ID, including deviceActionResults.
+    public async Task<ManagedDevice?> GetDeviceByIdAsync(string deviceId)
+    {
+        // Validate input
+        UiValidation.RequireNotNullOrWhiteSpace(
+            deviceId,
+            nameof(deviceId),
+            systemName: SystemNames.IntuneDevice,
+            userMessage: "Enhets-ID kan ikke være tomt.");
+
+        // Create named HTTP client and fetch token
+        var client = _httpClientFactory.CreateClient("Graph");
+        var token = await _tokenService.GetGraphTokenAsync();
+
+        // Set the Authorization header with the Bearer token
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        // Build request URL - direct GET by device ID returns deviceActionResults unlike list calls
+        var url = $"beta/deviceManagement/managedDevices/{deviceId}";
+
+        // Send GET request to Microsoft Graph
+        var response = await client.GetAsync(url);
+        var content = await response.Content.ReadAsStringAsync();
+
+        // Ensure success or treat no-data as valid (404/204)
+        if (!_guard.EnsureSuccessOrNoData(response, SystemNames.IntuneDevice, url, content))
+            return null;
+
+        // Ensure body is JSON
+        if (!_guard.EnsureJsonBody(content, SystemNames.IntuneDevice, url, (int)response.StatusCode))
+            return null;
+
+        // Deserialize response and attach raw JSON
+        var device = JsonSerializer.Deserialize<ManagedDevice>(content, _jsonSerializerOptions);
+        if (device != null)
+            device.RawJson = content;
+
+        return device;
+    }
+
     // Fetch LAPS password by Azure AD Device ID
-    public async Task<DeviceCredential?> GetLapsPasswordByAzureDeviceId(string azureAdDeviceId)
+    public async Task<DeviceCredential?> GetLapsPasswordByAzureDeviceId(string azureAdDeviceId, AuditContext audit)
     {
         // Validate input
         UiValidation.RequireNotNullOrWhiteSpace(
@@ -119,7 +160,7 @@ public sealed class IntuneService(IHttpClientFactory httpClientFactory, ITokenSe
         var content = await response.Content.ReadAsStringAsync();
 
         // Ensure success or treat no-data as valid (404/204)
-        if (!_guard.EnsureSuccessOrNoData(response, SystemNames.IntuneLaps, requestUrl, content))
+        if (!_guard.EnsureSuccessOrNoData(response, SystemNames.IntuneLaps, requestUrl, content, audit))
             return null;
 
         // Ensure body is JSON
@@ -199,7 +240,7 @@ public sealed class IntuneService(IHttpClientFactory httpClientFactory, ITokenSe
     }
 
     // Fetch Bitlocker recovery key by Azure AD Device ID
-    public async Task<BitlockerRecoveryKey?> GetBitlockerRecoveryKeyByAzureAdDeviceIdAsync(string azureAdDeviceId)
+    public async Task<BitlockerRecoveryKey?> GetBitlockerRecoveryKeyByAzureAdDeviceIdAsync(string azureAdDeviceId, AuditContext audit)
     {
         // Validate input
         UiValidation.RequireNotNullOrWhiteSpace(
@@ -229,7 +270,7 @@ public sealed class IntuneService(IHttpClientFactory httpClientFactory, ITokenSe
         var listContent = await listResponse.Content.ReadAsStringAsync();
 
         // Ensure success or treat no-data as valid (404/204)
-        if (!_guard.EnsureSuccessOrNoData(listResponse, SystemNames.IntuneBitlocker, listUrl, listContent))
+        if (!_guard.EnsureSuccessOrNoData(listResponse, SystemNames.IntuneBitlocker, listUrl, listContent, audit))
             return null;
 
         // Ensure body is JSON
@@ -256,10 +297,10 @@ public sealed class IntuneService(IHttpClientFactory httpClientFactory, ITokenSe
         var keyContent = await keyResponse.Content.ReadAsStringAsync();
 
         // Ensure success using ApiResponseGuard
-        _guard.EnsureSuccess(keyResponse, "Intune | Bitlocker", keyUrl, keyContent);
+        _guard.EnsureSuccess(keyResponse, SystemNames.IntuneBitlocker, keyUrl, keyContent, audit);
 
         // Ensure body is JSON
-        if (!_guard.EnsureJsonBody(keyContent, "Intune | Bitlocker", keyUrl, (int)keyResponse.StatusCode))
+        if (!_guard.EnsureJsonBody(keyContent, SystemNames.IntuneBitlocker, keyUrl, (int)keyResponse.StatusCode))
             return null;
 
         var keyObj = JsonSerializer.Deserialize<BitlockerRecoveryKey>(keyContent, _jsonSerializerOptions);
@@ -302,7 +343,7 @@ public sealed class IntuneService(IHttpClientFactory httpClientFactory, ITokenSe
     }
 
     // Wipes an Intune managed device. High impact action (must succeed).
-    public async Task WipeManagedDeviceAsync(string managedDeviceId)
+    public async Task WipeManagedDeviceAsync(string managedDeviceId, AuditContext audit)
     {
         // validate input
         UiValidation.RequireNotNullOrWhiteSpace(
@@ -327,11 +368,11 @@ public sealed class IntuneService(IHttpClientFactory httpClientFactory, ITokenSe
         var content = await response.Content.ReadAsStringAsync();
 
         // Ensure success (this is a high-impact action; must succeed, returns 204 no content on success)
-        _guard.EnsureSuccess(response, SystemNames.IntuneDeviceWipe, url, content);
+        _guard.EnsureSuccess(response, SystemNames.IntuneDeviceWipe, url, content, audit);
     }
 
     // Requests remote assistance for an Intune managed device.
-    public async Task RequestRemoteAssistanceAsync(string managedDeviceId)
+    public async Task RequestRemoteAssistanceAsync(string managedDeviceId, AuditContext audit)
     {
         // Validate input
         UiValidation.RequireNotNullOrWhiteSpace(
@@ -355,7 +396,7 @@ public sealed class IntuneService(IHttpClientFactory httpClientFactory, ITokenSe
         var content = await response.Content.ReadAsStringAsync();
 
         // Must succeed
-        _guard.EnsureSuccess(response, SystemNames.IntuneRemoteAssistance, url, content);
+        _guard.EnsureSuccess(response, SystemNames.IntuneRemoteAssistance, url, content, audit);
     }
 
     // Updates Autopilot device properties (groupTag) for a Windows Autopilot device identity.
@@ -399,7 +440,7 @@ public sealed class IntuneService(IHttpClientFactory httpClientFactory, ITokenSe
     }
 
     // Triggers an Intune action to rotate the local admin password (5–30 mins before pwd changes).
-    public async Task RotateLocalAdminPasswordAsync(string managedDeviceId)
+    public async Task RotateLocalAdminPasswordAsync(string managedDeviceId, AuditContext audit)
     {
         // Validate input
         UiValidation.RequireNotNullOrWhiteSpace(
@@ -423,7 +464,7 @@ public sealed class IntuneService(IHttpClientFactory httpClientFactory, ITokenSe
         var content = await response.Content.ReadAsStringAsync();
 
         // Action must succeed
-        _guard.EnsureSuccess(response, SystemNames.IntuneLapsRotate, url, content);
+        _guard.EnsureSuccess(response, SystemNames.IntuneLapsRotate, url, content, audit);
     }
 
     #endregion
@@ -431,7 +472,7 @@ public sealed class IntuneService(IHttpClientFactory httpClientFactory, ITokenSe
     #region Delete requests
 
     // Deletes an Intune managed device record. High impact action (must succeed).
-    public async Task DeleteManagedDeviceAsync(string managedDeviceId)
+    public async Task DeleteManagedDeviceAsync(string managedDeviceId, AuditContext audit)
     {
         // Validate input
         UiValidation.RequireNotNullOrWhiteSpace(
@@ -455,11 +496,11 @@ public sealed class IntuneService(IHttpClientFactory httpClientFactory, ITokenSe
         var content = await response.Content.ReadAsStringAsync();
 
         // Ensure success (this is a high-impact action; must succeed, returns 204 no content on success)
-        _guard.EnsureSuccess(response, SystemNames.IntuneDeviceDelete, url, content);
+        _guard.EnsureSuccess(response, SystemNames.IntuneDeviceDelete, url, content, audit);
     }
 
     // Deletes a Windows Autopilot device identity entry (high impact action; must succeed).
-    public async Task DeleteAutopilotDeviceAsync(string autopilotDeviceId)
+    public async Task DeleteAutopilotDeviceAsync(string autopilotDeviceId, AuditContext audit)
     {
         // Validate input
         UiValidation.RequireNotNullOrWhiteSpace(
@@ -483,7 +524,7 @@ public sealed class IntuneService(IHttpClientFactory httpClientFactory, ITokenSe
         var content = await response.Content.ReadAsStringAsync();
 
         // Ensure success using ApiResponseGuard
-        _guard.EnsureSuccess(response, SystemNames.IntuneAutopilotDelete, url, content);
+        _guard.EnsureSuccess(response, SystemNames.IntuneAutopilotDelete, url, content, audit);
     }
 
     #endregion
