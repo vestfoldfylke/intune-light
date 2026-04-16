@@ -4,6 +4,10 @@
 		<TargetFramework>net9.0</TargetFramework>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
+
+		<NugetAudit>true</NugetAudit>
+        <NugetAuditMode>all</NugetAuditMode> <!-- all (direct and transitive dependencies), direct (direct dependencies only) -->
+        <NugetAuditLevel>moderate</NugetAuditLevel> <!-- low (->), moderate (->), high (->), critical (->) -->
 	</PropertyGroup>
 
 	<PropertyGroup>
