@@ -15,7 +15,9 @@ public static class AppVersionHelper
                     : entryAssembly.GetName().Version?.ToString();
 
         if (string.IsNullOrWhiteSpace(raw))
+        {
             return "ukjent";
+        }
 
         // Format: "1.0.0+abc1234def..." → "v1.0.0 (abc1234)"
         var plusIndex = raw.IndexOf('+');

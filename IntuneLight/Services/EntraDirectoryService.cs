@@ -54,18 +54,24 @@ public sealed class EntraDirectoryService(IHttpClientFactory httpClientFactory, 
 
         // Ensure success or treat no-data as valid
         if (!_guard.EnsureSuccessOrNoData(response, SystemNames.EntraUser, url, content))
+        {
             return null;
+        }
 
         // Ensure JSON body
         if (!_guard.EnsureJsonBody(content, SystemNames.EntraUser, url, (int)response.StatusCode))
+        {
             return null;
+        }
 
         // Deserialize the response content to EntraUser
         EntraUser? entraUser = JsonSerializer.Deserialize<EntraUser>(content, _jsonSerializerOptions);
 
         // Attach raw JSON
         if (entraUser != null)
+        {
             entraUser.RawJson = content;
+        }
 
         // Fetch manager for employees
         if (entraUser != null && !entraUser.UserPrincipalName.Contains("skole"))
@@ -79,18 +85,24 @@ public sealed class EntraDirectoryService(IHttpClientFactory httpClientFactory, 
 
             // Ensure success or treat no-data as valid
             if (!_guard.EnsureSuccessOrNoData(response, SystemNames.EntraManager, url, content))
+            {
                 return entraUser;
+            }
 
             // Ensure JSON body
             if (!_guard.EnsureJsonBody(content, SystemNames.EntraManager, url, (int)response.StatusCode))
+            {
                 return entraUser;
+            }
 
             // Deserialize the response content to EntraUser
             var manager = JsonSerializer.Deserialize<EntraUser>(content, _jsonSerializerOptions);
 
             // Insert manager into entra user obj
             if (manager is not null)
+            {
                 entraUser.Manager = manager.DisplayName;
+            }
         }
 
         return entraUser;
@@ -122,18 +134,24 @@ public sealed class EntraDirectoryService(IHttpClientFactory httpClientFactory, 
 
         // Ensure success or treat no-data as valid
         if (!_guard.EnsureSuccessOrNoData(response, SystemNames.EntraDevice, url, content))
+        {
             return null;
+        }
 
         // Ensure JSON body
         if (!_guard.EnsureJsonBody(content, SystemNames.EntraDevice, url, (int)response.StatusCode))
+        {
             return null;
+        }
 
         // Deserialize the response content to EntraDevice.
         var entraDevice = JsonSerializer.Deserialize<EntraDevice>(content, _jsonSerializerOptions);
 
         // Attach raw JSON
         if (entraDevice is not null)
+        {
             entraDevice.RawJson = content;
+        }
 
         return entraDevice;
     }
@@ -163,7 +181,9 @@ public sealed class EntraDirectoryService(IHttpClientFactory httpClientFactory, 
 
         // 404 = user has no photo → not an error
         if (response.StatusCode == HttpStatusCode.NotFound)
+        {
             return null;
+        }
 
         // Read response
         var content = await response.Content.ReadAsByteArrayAsync();
@@ -173,7 +193,9 @@ public sealed class EntraDirectoryService(IHttpClientFactory httpClientFactory, 
 
         // Ensure binary body
         if (!_guard.EnsureBinaryBody(content, SystemNames.EntraUserPhoto, url, (int)response.StatusCode))
+        {
             return null;
+        }
             
         return content;
     }
@@ -204,18 +226,24 @@ public sealed class EntraDirectoryService(IHttpClientFactory httpClientFactory, 
 
         // Ensure success or treat no-data as valid (404/204)
         if (!_guard.EnsureSuccessOrNoData(response, SystemNames.EntraUserDevices, url, content))
+        {
             return null;
+        }
 
         // Ensure JSON body
         if (!_guard.EnsureJsonBody(content, SystemNames.EntraUserDevices, url, (int)response.StatusCode))
+        {
             return null;
+        }
 
         // Deserialize the response content to EntraDevice.
         var entraDeviceCount = JsonSerializer.Deserialize<EntraDeviceCount>(content, _jsonSerializerOptions);
 
         // Attach raw JSON
         if (entraDeviceCount != null)
+        {
             entraDeviceCount.RawJson = content;
+        }
 
         return entraDeviceCount;
     }
@@ -251,7 +279,6 @@ public sealed class EntraDirectoryService(IHttpClientFactory httpClientFactory, 
         // Ensure success using ApiResponseGuard
         _guard.EnsureSuccess(response, SystemNames.EntraDeviceDelete, url, content, audit);
     }
-
 
     #endregion
 }

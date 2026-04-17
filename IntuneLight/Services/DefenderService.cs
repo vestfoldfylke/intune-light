@@ -56,11 +56,15 @@ public sealed class DefenderService(IHttpClientFactory httpClientFactory, IToken
 
         // Ensure success or treat no-data as valid
         if (!_guard.EnsureSuccessOrNoData(response, SystemNames.DefenderDevice, url, content))
+        {
             return null;
+        }
 
         // Ensure JSON body
         if (!_guard.EnsureJsonBody(content, SystemNames.DefenderDevice, url, (int)response.StatusCode))
+        {
             return null;
+        }
 
         // Deserialize the response content
         DefenderDeviceListResponse? payload = JsonSerializer.Deserialize<DefenderDeviceListResponse>(content, _jsonSerializerOptions);
@@ -68,7 +72,9 @@ public sealed class DefenderService(IHttpClientFactory httpClientFactory, IToken
         // Find the first device and attach raw JSON
         var defenderDevice = payload?.Value?.FirstOrDefault();
         if (defenderDevice != null)
+        {
             defenderDevice.RawJson = content;
+        }
 
         return defenderDevice;
     }
@@ -101,11 +107,15 @@ public sealed class DefenderService(IHttpClientFactory httpClientFactory, IToken
 
         // Ensure success or treat no-data as valid
         if (!_guard.EnsureSuccessOrNoData(response, SystemNames.DefenderDevice, url, content))
+        {
             return null;
+        }
 
         // Ensure JSON body
         if (!_guard.EnsureJsonBody(content, SystemNames.DefenderDevice, url, (int)response.StatusCode))
+        {
             return null;
+        }
 
         // Deserialize the response content
         DefenderDeviceListResponse? payload = JsonSerializer.Deserialize<DefenderDeviceListResponse>(content, _jsonSerializerOptions);
@@ -113,7 +123,9 @@ public sealed class DefenderService(IHttpClientFactory httpClientFactory, IToken
         // Find the first device and attach raw JSON
         var defenderDevice = payload?.Value?.FirstOrDefault();
         if (defenderDevice != null)
+        {
             defenderDevice.RawJson = content;
+        }
 
         return defenderDevice;
     }
@@ -144,11 +156,15 @@ public sealed class DefenderService(IHttpClientFactory httpClientFactory, IToken
 
         // Ensure success or treat no-data as valid
         if (!_guard.EnsureSuccessOrNoData(response, SystemNames.DefenderIsolation, url, content))
+        {
             return false;
+        }
 
         // Ensure JSON body
         if (!_guard.EnsureJsonBody(content, SystemNames.DefenderIsolation, url, (int)response.StatusCode))
+        {
             return false;
+        }
 
         // Deserialize the response content
         DefenderMachineActions? payload = JsonSerializer.Deserialize<DefenderMachineActions>(content, _jsonSerializerOptions);
@@ -203,7 +219,9 @@ public sealed class DefenderService(IHttpClientFactory httpClientFactory, IToken
 
         // Handle "already in progress" explicitly (not an error)
         if (response.StatusCode == HttpStatusCode.BadRequest && content.Contains("already in progress", StringComparison.OrdinalIgnoreCase))
+        {
             return DefenderScanResult.AlreadyRunning;
+        }
 
         // Ensure success (If successful, this method returns 201, Created response code and MachineAction object in the response body.)
         _guard.EnsureSuccess(response, SystemNames.DefenderAvScan, url, content, audit);

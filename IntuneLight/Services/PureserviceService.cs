@@ -1,7 +1,5 @@
 ﻿using IntuneLight.Infrastructure;
-using IntuneLight.Models.Options;
 using IntuneLight.Models.Pureservice;
-using Microsoft.Extensions.Options;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -66,11 +64,15 @@ public sealed class PureserviceService
 
         // Ensure success or treat no-data as valid (404/204)
         if (!_guard.EnsureSuccessOrNoData(response, SystemNames.PureserviceUser, url, content))
+        {
             return null;
+        }
 
         // Ensure JSON body
         if (!_guard.EnsureJsonBody(content, SystemNames.PureserviceUser, url, (int)response.StatusCode))
+        {
             return null;
+        }
 
         // Deserialize response and return first user found
         var payload = JsonSerializer.Deserialize<PureserviceUserSearchResponse>(content, _jsonSerializerOptions);
@@ -78,7 +80,9 @@ public sealed class PureserviceService
 
         // Attach raw json
         if (pureserviceUser != null)
+        {
             pureserviceUser.RawJson = content;
+        }
 
         return pureserviceUser;
     }
@@ -114,11 +118,15 @@ public sealed class PureserviceService
 
         // Ensure success or treat no-data as valid (404/204)
         if (!_guard.EnsureSuccessOrNoData(response, SystemNames.PureserviceTicket, url, content))
+        {
             return null;
+        }
 
         // Ensure JSON body
         if (!_guard.EnsureJsonBody(content, SystemNames.PureserviceTicket, url, (int)response.StatusCode))
+        {
             return null;
+        }
 
         // Deserialize response and return ticket
         var payload = JsonSerializer.Deserialize<PureserviceTicketSearchResponse>(content, _jsonSerializerOptions);
@@ -126,7 +134,9 @@ public sealed class PureserviceService
 
         // Attach raw json
         if (pureserviceTicket != null)
+        {
             pureserviceTicket.RawJson = content;
+        }
 
         return pureserviceTicket;
     }
@@ -163,11 +173,15 @@ public sealed class PureserviceService
 
         // Ensure success or treat no-data as valid (404/204)
         if (!_guard.EnsureSuccessOrNoData(searchResponse, SystemNames.PureserviceDevice, searchUrl, searchContent))
+        {
             return null;
+        }
 
         // Ensure JSON body
         if (!_guard.EnsureJsonBody(searchContent, SystemNames.PureserviceDevice, searchUrl, (int)searchResponse.StatusCode))
+        {
             return null;
+        }
 
         // Deserialize search response
         var searchPayload = JsonSerializer.Deserialize<PureserviceAssetSearchResponse>(
@@ -176,7 +190,9 @@ public sealed class PureserviceService
         // If no assets found, return null
         var searchAsset = searchPayload?.Assets?.FirstOrDefault();
         if (searchAsset == null || string.IsNullOrWhiteSpace(searchAsset.Id.ToString()))
+        {
             return null;
+        }
 
         // Fetch full asset details by asset ID
         var encodedAssetId = Uri.EscapeDataString(searchAsset.Id.ToString());
@@ -188,11 +204,15 @@ public sealed class PureserviceService
 
         // Ensure success or treat no-data as valid (404/204)
         if (!_guard.EnsureSuccessOrNoData(assetResponse, SystemNames.PureserviceDevice, assetUrl, assetContent))
+        {
             return null;
+        }
 
         // Ensure JSON body
         if (!_guard.EnsureJsonBody(assetContent, SystemNames.PureserviceDevice, assetUrl, (int)assetResponse.StatusCode))
+        {
             return null;
+        }
 
         // Deserialize full asset response
         var assetPayload = JsonSerializer.Deserialize<PureserviceAssetSearchResponse>(
@@ -201,7 +221,9 @@ public sealed class PureserviceService
         // If no assets found, return null
         var asset = assetPayload?.Assets?.FirstOrDefault();
         if (asset == null)
+        {
             return null;
+        }
 
         // Attach raw JSON for debugging / raw viewer
         asset.RawJson = assetContent;
@@ -249,18 +271,24 @@ public sealed class PureserviceService
 
         // Ensure success or treat no-data as valid (404/204)
         if (!_guard.EnsureSuccessOrNoData(response, SystemNames.PureserviceRelationship, url, content))
+        {
             return null;
+        }
 
         // Ensure JSON body
         if (!_guard.EnsureJsonBody(content, SystemNames.PureserviceRelationship, url, (int)response.StatusCode))
+        {
             return null;
+        }
 
         // Deserialize response
         var result = JsonSerializer.Deserialize<PureserviceRelationshipSearchResponse>( content, _jsonSerializerOptions);
 
         // Attach raw JSON for debugging / raw viewer
         if (result is not null)
+        {
             result.RawJson = content;
+        }
 
         return result;
     }
@@ -287,7 +315,9 @@ public sealed class PureserviceService
 
         // Ensure success or treat no-data as valid
         if (!_guard.EnsureSuccessOrNoData(response, SystemNames.PureserviceDevice, url, content))
+        {
             return null;
+        }
 
         // Deserialize and return class name
         var payload = JsonSerializer.Deserialize<JsonElement>(content, _jsonSerializerOptions);
@@ -328,12 +358,16 @@ public sealed class PureserviceService
 
         // Ensure success or treat no-data as valid
         if (!_guard.EnsureSuccessOrNoData(getResponse, SystemNames.PureserviceAssetStatus, getUrl, getContent))
+        {
             throw new InvalidOperationException("Kunne ikke hente asset for oppdatering.");
+        }
 
         // Fetch asset type class name required as root key in PUT payload
         var className = await GetAssetTypeClassNameAsync(typeId);
         if (string.IsNullOrWhiteSpace(className))
+        {
             throw new InvalidOperationException($"Kunne ikke hente asset type klassenavn for typeId {typeId}.");
+        }
 
         // Parse asset and update only the status link
         var doc = JsonDocument.Parse(getContent);
@@ -465,7 +499,9 @@ public sealed class PureserviceService
         var ticket = result?.Tickets?.FirstOrDefault();
 
         if (ticket is null)
+        {
             return null;
+        }
 
         // Fetch the full ticket to get all fields needed for PUT
         var getUrl = $"ticket/{ticket.Id}";
@@ -473,7 +509,9 @@ public sealed class PureserviceService
         var getContent = await getResponse.Content.ReadAsStringAsync();
 
         if (!_guard.EnsureSuccessOrNoData(getResponse, SystemNames.PureserviceOffboardingTicket, getUrl, getContent))
+        {
             return ticket;
+        }
 
         // Parse ticket and update assignedAgent
         var doc = JsonDocument.Parse(getContent);

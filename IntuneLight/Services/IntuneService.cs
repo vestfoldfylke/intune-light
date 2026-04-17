@@ -62,11 +62,15 @@ public sealed class IntuneService(IHttpClientFactory httpClientFactory, ITokenSe
 
         // Ensure success or treat no-data as valid (404/204)
         if (!_guard.EnsureSuccessOrNoData(response, SystemNames.IntuneDevice, url, content))
+        {
             return null;
+        }
 
         // Ensure body is JSON
         if (!_guard.EnsureJsonBody(content, SystemNames.IntuneDevice, url, (int)response.StatusCode))
+        {
             return null;
+        }
 
         // Deserialize response to GraphManagedDeviceListResponse
         var payload = JsonSerializer.Deserialize<GraphManagedDeviceListResponse>(content, _jsonSerializerOptions);
@@ -74,7 +78,9 @@ public sealed class IntuneService(IHttpClientFactory httpClientFactory, ITokenSe
         // Find the first device and attach raw JSON
         var intuneDevice = payload?.Value?.FirstOrDefault();
         if (intuneDevice != null)
+        {
             intuneDevice.RawJson = content;
+        }
         
         return intuneDevice;
     }
@@ -105,16 +111,22 @@ public sealed class IntuneService(IHttpClientFactory httpClientFactory, ITokenSe
 
         // Ensure success or treat no-data as valid (404/204)
         if (!_guard.EnsureSuccessOrNoData(response, SystemNames.IntuneDevice, url, content))
+        {
             return null;
+        }
 
         // Ensure body is JSON
         if (!_guard.EnsureJsonBody(content, SystemNames.IntuneDevice, url, (int)response.StatusCode))
+        {
             return null;
+        }
 
         // Deserialize response and attach raw JSON
         var device = JsonSerializer.Deserialize<ManagedDevice>(content, _jsonSerializerOptions);
         if (device != null)
+        {
             device.RawJson = content;
+        }
 
         return device;
     }
@@ -131,12 +143,14 @@ public sealed class IntuneService(IHttpClientFactory httpClientFactory, ITokenSe
 
         // Validate GUID format (keep parsed guid for later use)
         if (!Guid.TryParse(azureAdDeviceId, out var guid))
+        {
             throw new UiValidationException(
                 systemName: SystemNames.IntuneLaps,
                 message: "Enhets-ID (Azure AD) har ugyldig format. Forventet GUID.",
                 innerException: new ArgumentException(
                     "AzureADDeviceId må være av typen GUID.",
                     nameof(azureAdDeviceId)));
+        }
 
         // Create named HTTP client and fetch token
         var client = _httpClientFactory.CreateClient("Graph");
@@ -161,18 +175,24 @@ public sealed class IntuneService(IHttpClientFactory httpClientFactory, ITokenSe
 
         // Ensure success or treat no-data as valid (404/204)
         if (!_guard.EnsureSuccessOrNoData(response, SystemNames.IntuneLaps, requestUrl, content, audit))
+        {
             return null;
+        }
 
         // Ensure body is JSON
         if (!_guard.EnsureJsonBody(content, SystemNames.IntuneLaps, requestUrl, (int)response.StatusCode))
+        {
             return null;
+        }
 
         // Deserialize the response content to DeviceCredential
         DeviceCredential? deviceCredentialResponse = JsonSerializer.Deserialize<DeviceCredential>(content, _jsonSerializerOptions);
 
         // If no credentials found, return null
         if (deviceCredentialResponse == null)
+        {
             return null;
+        }
 
         // Decode all passwords from base64
         deviceCredentialResponse.DecodeAllPasswords();
@@ -222,11 +242,15 @@ public sealed class IntuneService(IHttpClientFactory httpClientFactory, ITokenSe
 
         // Ensure success or treat no-data as valid (404/204)
         if (!_guard.EnsureSuccessOrNoData(response, SystemNames.IntuneAutopilot, url, content))
+        {
             return null;
+        }
 
         // Ensure body is JSON
         if (!_guard.EnsureJsonBody(content, SystemNames.IntuneAutopilot, url, (int)response.StatusCode))
+        {
             return null;
+        }
 
         // Deserialize response to AutopilotResponse
         var payload = JsonSerializer.Deserialize<AutopilotResponse>(content, _jsonSerializerOptions);
@@ -234,7 +258,9 @@ public sealed class IntuneService(IHttpClientFactory httpClientFactory, ITokenSe
         // Find the first device and attach raw JSON
         var autopilotDevice = payload?.Value?.FirstOrDefault();
         if (autopilotDevice != null)
+        {
             autopilotDevice.RawJson = content;
+        }
 
         return autopilotDevice;
     }
@@ -271,17 +297,23 @@ public sealed class IntuneService(IHttpClientFactory httpClientFactory, ITokenSe
 
         // Ensure success or treat no-data as valid (404/204)
         if (!_guard.EnsureSuccessOrNoData(listResponse, SystemNames.IntuneBitlocker, listUrl, listContent, audit))
+        {
             return null;
+        }
 
         // Ensure body is JSON
         if (!_guard.EnsureJsonBody(listContent, SystemNames.IntuneBitlocker, listUrl, (int)listResponse.StatusCode))
+        {
             return null;
+        }
 
         // Deserialize the list response to find the most recent recovery key-ID
         var listPayload = JsonSerializer.Deserialize<BitlockerRecoveryKeysResponse>(listContent, _jsonSerializerOptions);
         var candidate = listPayload?.Value?.OrderByDescending(x => x.CreatedDateTime).FirstOrDefault();
         if (candidate == null)
+        {
             return null;
+        }
 
         // Build request URL to get the specific recovery key
         var keyUrl = $"v1.0/informationProtection/bitlocker/recoveryKeys/{candidate.Id}?$select=key";
@@ -301,11 +333,15 @@ public sealed class IntuneService(IHttpClientFactory httpClientFactory, ITokenSe
 
         // Ensure body is JSON
         if (!_guard.EnsureJsonBody(keyContent, SystemNames.IntuneBitlocker, keyUrl, (int)keyResponse.StatusCode))
+        {
             return null;
+        }
 
         var keyObj = JsonSerializer.Deserialize<BitlockerRecoveryKey>(keyContent, _jsonSerializerOptions);
         if (keyObj != null)
+        {
             keyObj.RawJson = keyContent;
+        }
 
         return keyObj;
     }

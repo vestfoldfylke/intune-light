@@ -76,7 +76,9 @@
     private static string NormalizeForQr(string raw)
     {
         if (string.IsNullOrWhiteSpace(raw))
+        {
             return string.Empty;
+        }
 
         var trimmed = raw.Trim();
 
@@ -93,7 +95,9 @@
     private static bool LooksLikeBitLocker(string raw)
     {
         if (string.IsNullOrWhiteSpace(raw))
+        {
             return false;
+        }
 
         var digits = new string(raw.Where(char.IsDigit).ToArray());
         return digits.Length == 48;

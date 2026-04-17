@@ -18,7 +18,9 @@ public partial class Home : ComponentBase
     private async Task DeleteEntraDeviceAsync()
     {
         if (_state.ManagedDevice is null)
+        {
             return;
+        }
 
         var confirmed = await _dialogService.ConfirmIrreversibleAsync(
             title: "Slett Entra-enhet",
@@ -27,7 +29,9 @@ public partial class Home : ComponentBase
             cancelText: "Avbryt");
 
         if (!confirmed)
+        {
             return;
+        }
 
         var deviceId = _state.ManagedDevice.AzureADDeviceId;
 
@@ -37,9 +41,11 @@ public partial class Home : ComponentBase
                 // Check if the device is still present in Autopilot before attempting deletion.
                 var autopilotDevice = await _intuneService.GetAutopilotDeviceBySerialAsync(_state.ManagedDevice.SerialNumber);
                 if (autopilotDevice is not null)
+                {
                     throw new UiValidationException(
                         systemName: SystemNames.EntraDeviceDelete,
                         message: "Enheten ligger i Autopilot og kan ikke slettes.");
+                }
 
                 // Delete the device from Entra ID using the Azure AD device ID.
                 await _entraDirectoryService.DeleteDeviceByAzureAdDeviceIdAsync(deviceId, _state.BuildAuditContext());
@@ -60,7 +66,9 @@ public partial class Home : ComponentBase
     private async Task SyncIntuneDeviceAsync()
     {
         if (_state.ManagedDevice is null)
+        {
             return;
+        }
 
         await _uiErrorHandler.RunSafeAsync(
             async () =>
@@ -74,7 +82,9 @@ public partial class Home : ComponentBase
     private async Task WipeIntuneDeviceAsync()
     {
         if (_state.ManagedDevice is null)
+        {
             return;
+        }
 
         var confirmed = await _dialogService.ConfirmIrreversibleAsync(
             title: "Wipe enhet",
@@ -83,7 +93,9 @@ public partial class Home : ComponentBase
             cancelText: "Avbryt");
 
         if (!confirmed)
+        {
             return;
+        }
 
         await _uiErrorHandler.RunSafeAsync(async () =>
         {
@@ -96,7 +108,9 @@ public partial class Home : ComponentBase
     private async Task RequestRemoteAssistanceAsync()
     {
         if (_state.ManagedDevice is null)
+        {
             return;
+        }
 
         await _uiErrorHandler.RunSafeAsync(async () =>
         {
@@ -109,7 +123,9 @@ public partial class Home : ComponentBase
     private async Task DeleteIntuneDeviceAsync()
     {
         if (_state.ManagedDevice is null)
+        {
             return;
+        }
 
         var confirmed = await _dialogService.ConfirmIrreversibleAsync(
             title: "Slett Intune-enhet",
@@ -118,7 +134,9 @@ public partial class Home : ComponentBase
             cancelText: "Avbryt");
 
         if (!confirmed)
+        {
             return;
+        }
 
         await _uiErrorHandler.RunSafeAsync(async () =>
         {
@@ -138,7 +156,9 @@ public partial class Home : ComponentBase
     private async Task RunDefenderScanAsync(DefenderScanType scanType)
     {
         if (_state.DefenderDevice is null)
+        {
             return;
+        }
 
         await _uiErrorHandler.RunSafeAsync(async () =>
         {
@@ -165,7 +185,9 @@ public partial class Home : ComponentBase
     private async Task DeleteAutopilotDeviceAsync()
     {
         if (_state.AutopilotDevice is null)
+        {
             return;
+        }
 
         var confirmed = await _dialogService.ConfirmIrreversibleAsync(
             title: "Slett Autopilot-oppføring",
@@ -174,7 +196,9 @@ public partial class Home : ComponentBase
             cancelText: "Avbryt");
 
         if (!confirmed)
+        {
             return;
+        }
 
         await _uiErrorHandler.RunSafeAsync(async () =>
         {
@@ -190,7 +214,9 @@ public partial class Home : ComponentBase
     private async Task SetAutopilotTagAsync()
     {
         if (_state.AutopilotDevice is null)
+        {
             return;
+        }
 
         var options = new DialogOptions
         {
@@ -204,7 +230,9 @@ public partial class Home : ComponentBase
         var result = await dialog.Result;
 
         if (result != null && result.Canceled || result?.Data is not string tag || string.IsNullOrWhiteSpace(tag))
+        {
             return;
+        }
 
         // No-op if unchanged
         if (string.Equals(_state.AutopilotDevice.GroupTag ?? string.Empty, tag, StringComparison.Ordinal))
@@ -228,7 +256,9 @@ public partial class Home : ComponentBase
     private async Task RotateLapsPasswordAsync()
     {
         if (_state.ManagedDevice is null)
-            return;
+        {  
+            return; 
+        }
 
         var confirmed = await _dialogService.ConfirmIrreversibleAsync(
             title: "Roter LAPS-passord",
@@ -243,7 +273,9 @@ public partial class Home : ComponentBase
             isIrreversible: false);
 
         if (!confirmed)
+        {
             return;
+        }
 
         await _uiErrorHandler.RunSafeAsync(async () =>
         {
@@ -265,7 +297,9 @@ public partial class Home : ComponentBase
     private async Task RefreshAsync(RefreshTarget target)
     {
         if (_state.ManagedDevice is null)
+        {
             return;
+        }
 
         // Set loading target for spinner
         _loadingTarget = target;
@@ -367,7 +401,9 @@ public partial class Home : ComponentBase
     {
         // Offboarding is only available if we have a managed device
         if (_state.ManagedDevice is null)
+        {
             return;
+        }
 
         var options = new DialogOptions
         {
@@ -382,7 +418,9 @@ public partial class Home : ComponentBase
         var result = await dialog.Result;
 
         if (result is null || result.Canceled)
+        {
             return;
+        }
 
         var offboardingType = (OffboardingType)result.Data!;
         var withWipe = offboardingType == OffboardingType.WithWipe;
@@ -416,7 +454,9 @@ public partial class Home : ComponentBase
                 _state.ManagedDevice.AzureADDeviceId, _state.BuildAuditContext());
 
             if (credential?.Credentials is { Count: > 0 })
+            {
                 _lapsPassword = credential.Credentials.First().DecodedPassword;
+            }
         }, ct);
 
         // Step 1: Fetch BitLocker key before offboarding
@@ -426,21 +466,29 @@ public partial class Home : ComponentBase
                 _state.ManagedDevice.AzureADDeviceId, _state.BuildAuditContext());
 
             if (key?.Key is not null)
+            {
                 _bitlockerKey = key.Key;
+            }
         }, ct);
 
         // Step 2: Remove from Autopilot - skip if already gone
         if (_state.AutopilotDevice is null)
+        {
             UpdateStep("Fjerner fra Autopilot", OffboardingStepStatus.Skipped, "Ikke funnet");
-        else
+        }
+        else 
+        {
             await RunOffboardingStepAsync("Fjerner fra Autopilot", async () =>
             {
                 // Check if already deleted before attempting
                 var existing = await _intuneService.GetAutopilotDeviceBySerialAsync(_state.SearchSerial);
                 if (existing is null)
+                {
                     return; // Already gone, skip silently
+                }
 
-                await _intuneService.DeleteAutopilotDeviceAsync(_state.AutopilotDevice.Id, _state.BuildAuditContext());
+                await _intuneService.DeleteAutopilotDeviceAsync(_state.AutopilotDevice.Id, 
+                      _state.BuildAuditContext());
 
                 // Poll until removed
                 while (!ct.IsCancellationRequested)
@@ -448,14 +496,20 @@ public partial class Home : ComponentBase
                     await Task.Delay(5000, ct);
                     var device = await _intuneService.GetAutopilotDeviceBySerialAsync(_state.SearchSerial);
                     if (device is null)
+                    {
                         break;
+                    }
                 }
             }, ct);
+        }
 
         // Step 3: Sync Intune - wait until lastSyncDateTime changes (only with wipe)
         if (!withWipe)
+        {
             UpdateStep("Synkroniserer Intune", OffboardingStepStatus.Skipped, "Ikke valgt");
-        else
+        }
+        else 
+        {
             await RunOffboardingStepAsync("Synkroniserer Intune", async () =>
             {
                 var syncBefore = _state.ManagedDevice.LastSyncDateTime;
@@ -467,18 +521,23 @@ public partial class Home : ComponentBase
                     await Task.Delay(10000, ct);
                     var device = await _intuneService.GetDeviceByIdAsync(_state.ManagedDevice.Id);
                     if (device?.LastSyncDateTime > syncBefore)
+                    {
                         break;
+                    }
                 }
             }, ct);
+        }
 
         // Step 4: Wipe - wait until wipe is pending/issued, then until device is gone (only with wipe)
         if (!withWipe)
+        {
             UpdateStep("Wiper enhet", OffboardingStepStatus.Skipped, "Ikke valgt");
+        }
         else
+        {
             await RunOffboardingStepAsync("Wiper enhet", async () =>
             {
-                await _intuneService.WipeManagedDeviceAsync(
-                    _state.ManagedDevice.Id, _state.BuildAuditContext());
+                await _intuneService.WipeManagedDeviceAsync(_state.ManagedDevice.Id, _state.BuildAuditContext());
 
                 // Poll until wipe action is registered in deviceActionResults
                 while (!ct.IsCancellationRequested)
@@ -487,7 +546,9 @@ public partial class Home : ComponentBase
                     var device = await _intuneService.GetDeviceByIdAsync(_state.ManagedDevice.Id);
                     var wipeAction = device?.DeviceActionResults?.FirstOrDefault(a => a.ActionName == "wipe");
                     if (wipeAction?.ActionState is "pending" or "active" or "done")
+                    {
                         break;
+                    }
                 }
 
                 // Poll until wipePending - confirms device has received and started wipe
@@ -497,56 +558,87 @@ public partial class Home : ComponentBase
                     var device = await _intuneService.GetDeviceByIdAsync(_state.ManagedDevice.Id);
 
                     if (device is null || device.ManagementState == "wipePending")
-                        break;
+                    { 
+                        break; 
+                    }
 
                     if (device.ManagementState is "wipeFailed" or "wipeCanceled")
+                    {
                         throw new InvalidOperationException($"Wipe feilet med status: {device.ManagementState}.");
+                    }
                 }
 
             }, ct);
+        }
+
 
         // Step 5: Remove from Entra (only with wipe)
         if (!withWipe)
+        {
             UpdateStep("Fjerner fra Entra", OffboardingStepStatus.Skipped, "Ikke valgt");
+        }
         else if (_state.EntraDevice is null)
+        {
             UpdateStep("Fjerner fra Entra", OffboardingStepStatus.Skipped, "Ikke funnet");
+        }
         else
-            await RunOffboardingStepAsync("Fjerner fra Entra", async () =>
-                        await _entraDirectoryService.DeleteDeviceByAzureAdDeviceIdAsync(_state.ManagedDevice.AzureADDeviceId, 
-                            _state.BuildAuditContext()), ct);
+        {
+            await RunOffboardingStepAsync("Fjerner fra Entra", async () => 
+            {
+                await _entraDirectoryService.DeleteDeviceByAzureAdDeviceIdAsync(_state.ManagedDevice.AzureADDeviceId,
+                      _state.BuildAuditContext());
+            }, ct);
+        }
 
         // Step 6: Remove from Intune - skipped as device is automatically removed after wipe
         if (withWipe)
+        {
             UpdateStep("Fjerner fra Intune", ct.IsCancellationRequested
                 ? OffboardingStepStatus.Skipped
                 : OffboardingStepStatus.Success,
                 ct.IsCancellationRequested ? "Avbrutt av bruker" : "Fjernet av wipe");
+        }
         else
+        {
             UpdateStep("Fjerner fra Intune", OffboardingStepStatus.Skipped, "Ikke valgt");
+        }
 
         // Step 7: Tag Defender
         if (_state.DefenderDevice is null)
+        {
             UpdateStep("Tagger i Defender", OffboardingStepStatus.Skipped, "Ikke funnet");
-        else
+        }
+        else 
+        {
             await RunOffboardingStepAsync("Tagger i Defender", async () =>
             {
                 await _defenderService.AddMachineTagAsync(_state.DefenderDevice.Id, "Privatisert");
                 await _defenderService.AddMachineTagAsync(_state.DefenderDevice.Id, "Offboardet");
             }, ct);
+        }
 
         // Step 8: Update status in Pureservice
         if (_state.PureserviceAssetBySn is null)
+        {
             UpdateStep("Oppdaterer status i Pureservice", OffboardingStepStatus.Skipped, "Ikke funnet");
+        }
         else
+        {
             await RunOffboardingStepAsync("Oppdaterer status i Pureservice", async () =>
+            {
                 await _pureserviceService.UpdateAssetStatusAsync(
-                    _state.PureserviceAssetBySn.Id.ToString(),
-                    _state.PureserviceAssetBySn.TypeId), ct);
+                      _state.PureserviceAssetBySn.Id.ToString(),
+                      _state.PureserviceAssetBySn.TypeId);
+            }, ct);
+        }
 
         // Step 9: Create ticket in Pureservice
         if (_state.PureserviceAssetBySn is null || _state.PureserviceUser is null)
+        {
             UpdateStep("Oppretter sak i Pureservice", OffboardingStepStatus.Skipped, "Mangler asset eller bruker i Pureservice");
+        }
         else
+        {
             await RunOffboardingStepAsync("Oppretter sak i Pureservice", async () =>
             {
                 var agent = await _pureserviceService.GetUserByEmailAsync(UserCtx.Upn!)
@@ -560,6 +652,7 @@ public partial class Home : ComponentBase
                     agentDepartmentId: agent.CompanyDepartmentId,
                     assetId: _state.PureserviceAssetBySn.Id);
             }, ct);
+        }
 
         _isOffboarding = false;
         _offboardingCts = null;
@@ -572,7 +665,9 @@ public partial class Home : ComponentBase
     {
         // Stop if a previous step has failed
         if (_offboardingSteps.Any(s => s.Status == OffboardingStepStatus.Failed))
+        {
             return;
+        }
 
         // Stop if cancellation was requested
         if (ct.IsCancellationRequested)
@@ -641,7 +736,9 @@ public partial class Home : ComponentBase
     {
         var index = _offboardingSteps.FindIndex(s => s.StepName == stepName);
         if (index >= 0)
+        {
             _offboardingSteps[index] = new OffboardingStepResult(stepName, status, message);
+        }
     }
 
     // Resets the offboarding state to allow starting a new offboarding process.
@@ -658,17 +755,22 @@ public partial class Home : ComponentBase
     private string GetOffboardingTitle()
     {
         if (_isOffboarding)
+        {
             return "Offboarding pågår";
-
-        if (_offboardingSteps.Any(s => s.Status == OffboardingStepStatus.Failed))
+        }
+        else if (_offboardingSteps.Any(s => s.Status == OffboardingStepStatus.Failed))
+        {
             return "Offboarding feilet";
-
-        if (_offboardingSteps.Any(s => s.Status == OffboardingStepStatus.Skipped && s.Message == "Avbrutt av bruker"))
+        }
+        else if (_offboardingSteps.Any(s => s.Status == OffboardingStepStatus.Skipped && s.Message == "Avbrutt av bruker"))
+        {
             return "Offboarding avbrutt";
-
-        return "Offboarding fullført";
+        }
+        else 
+        {
+            return "Offboarding fullført";
+        }
     }
 
     #endregion
-
 }
