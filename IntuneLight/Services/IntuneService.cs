@@ -233,8 +233,9 @@ public sealed class IntuneService(IHttpClientFactory httpClientFactory, ITokenSe
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         // Build request URL with OData filter for serial number
-        var filter = $"contains(serialNumber,'{ODataHelper.EscapeFilterValue(serialNumber)}')";
-        var url = $"beta/deviceManagement/windowsAutopilotDeviceIdentities?$filter={Uri.EscapeDataString(filter)}&$top=1";
+        // Escape only for OData string literal, not for URL here
+        var escapedSerial = ODataHelper.EscapeFilterValue(serialNumber);
+        var url = $"beta/deviceManagement/windowsAutopilotDeviceIdentities?$filter=contains(serialNumber,'{escapedSerial}')&$top=1";
 
         // Send the request
         var response = await client.GetAsync(url);
