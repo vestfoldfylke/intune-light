@@ -43,13 +43,17 @@ public static class AutopilotTagHelper
         var suffix = (locationSuffix ?? string.Empty).Trim();
 
         if (string.IsNullOrEmpty(tag))
+        {
             return string.Empty;
+        }
 
         // Ensure exactly one dash between tag and suffix
         if (!string.IsNullOrEmpty(suffix))
         {
             if (!tag.EndsWith('-'))
+            {
                 tag += "-";
+            }
 
             tag += suffix;
         }
@@ -57,4 +61,3 @@ public static class AutopilotTagHelper
         return tag;
     }
 }
-

@@ -28,7 +28,9 @@ public sealed class DeviceCredential
             foreach (var credential in Credentials)
             {
                 if (!string.IsNullOrEmpty(credential.PasswordBase64))
+                {
                     credential.DecodedPassword = DecodeBase64(credential.PasswordBase64);
+                }
             }
         }
     }

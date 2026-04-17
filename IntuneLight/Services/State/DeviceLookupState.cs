@@ -23,19 +23,41 @@ public sealed class DeviceLookupState
     public bool IsDarkMode
     {
         get => _isDarkMode;
-        set { if (_isDarkMode == value) return; _isDarkMode = value; NotifyStateChanged(); }
+        set 
+        { 
+            if (_isDarkMode == value) 
+            {
+                return; 
+            }
+            _isDarkMode = value; NotifyStateChanged(); 
+        }
     }
 
     public bool IsFetching
     {
         get => _isFetching;
-        set { if (_isFetching == value) return; _isFetching = value; NotifyStateChanged(); }
+        set 
+        {
+            if (_isFetching == value)
+            {
+                return;
+            }
+            _isFetching = value; 
+            NotifyStateChanged(); 
+        }
     }
 
     public bool HasSearched
     {
         get => _hasSearched;
-        set { if (_hasSearched == value) return; _hasSearched = value; NotifyStateChanged(); }
+        set 
+        { 
+            if (_hasSearched == value) 
+            {
+                return; 
+            }
+            _hasSearched = value; 
+            NotifyStateChanged(); }
     }
 
     public string SearchSerial
@@ -45,7 +67,9 @@ public sealed class DeviceLookupState
         {
             var normalized = NormalizeSerial(value);
             if (_searchSerial == normalized)
+            {
                 return;
+            }
 
             _searchSerial = normalized;
             IsSearchSerialTouched = true;
@@ -57,7 +81,15 @@ public sealed class DeviceLookupState
     public bool IsIsolated
     {
         get => _isIsolated;
-        set { if (_isIsolated == value) return; _isIsolated = value; NotifyStateChanged(); }
+        set 
+        { 
+            if (_isIsolated == value) 
+            { 
+                return; 
+            }
+            
+            _isIsolated = value; 
+            NotifyStateChanged(); }
     }
 
     // Results
@@ -86,8 +118,10 @@ public sealed class DeviceLookupState
     // Clears all results for a new lookup while keeping UI flags optional.
     public void ClearResults(bool keepSearchSerial = true)
     {
-        if (!keepSearchSerial) 
+        if (!keepSearchSerial)
+        {
             _searchSerial = string.Empty;
+        }
 
         ManagedDevice = null;
         DefenderDevice = null;
@@ -146,34 +180,52 @@ public sealed class DeviceLookupState
     public bool IsSearchSerialValid => string.IsNullOrEmpty(SearchSerialError);
     public bool IsSearchSerialTouched { get; private set; } = false;
 
-    // Normalizes a serial number for lookup and OData filter expressions.
-    // Trims, removes spaces, uppercases, and escapes single quotes to prevent OData injection
-    // (e.g. a serial containing ' could break the filter string and manipulate the query).
+    // Normalizes a serial number for lookup — trims, removes whitespace, uppercases, and escapes OData injection characters.
     private static string NormalizeSerial(string? input)
     {
         if (string.IsNullOrWhiteSpace(input))
+        {
             return string.Empty;
+        }
+
         return input.Trim()
                     .Replace(" ", string.Empty)
+                    .Replace("\t", string.Empty)
                     .ToUpperInvariant()
                     .Replace("'", "''");
     }
 
-    // Validates allowed serial number characters (A-Z, 0-9, '-'), and length bounds.
+    // Validates serial number format — allows letters, digits, and hyphens within expected length bounds.
     private static string GetSerialError(string serial)
     {
-        serial = serial?.Trim() ?? string.Empty;
+        // Normalize before validation so length check reflects actual lookup value
+        serial = NormalizeSerial(serial);
 
-        if (string.IsNullOrEmpty(serial)) return "Serienummer mangler.";
-        if (serial.Length is < 3 or > 40) return "Serienummer har ugyldig lengde.";
-        if (serial.All(c => c == '-'))    return "Serienummer er ugyldig.";
+        if (string.IsNullOrEmpty(serial))
+        {
+            return "Serienummer mangler.";
+        }
+        else if (serial.Length < 7)
+        {
+            return "Serienummer er for kort.";
+        }
+        else if (serial.Length > 40)
+        {
+            return "Serienummer er for langt.";
+        }
+        else if (serial.All(c => c == '-'))
+        {
+            return "Serienummer er ugyldig.";
+        }
 
         foreach (var c in serial)
         {
             if (!(char.IsLetterOrDigit(c) || c == '-'))
+            {
                 return "Serienummer kan kun inneholde bokstaver, tall og bindestrek.";
+            }
         }
-        
+
         return string.Empty;
     }
 

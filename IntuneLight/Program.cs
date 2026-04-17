@@ -64,7 +64,9 @@ builder.Services.AddHttpClient("Graph", (sp, client) =>
 {
     var httpOptions = sp.GetRequiredService<IOptions<HttpClientsOptions>>().Value;
     if (string.IsNullOrWhiteSpace(httpOptions.Graph.BaseAddress))
+    {
         throw new InvalidOperationException("HttpClients:Graph:BaseAddress must be configured.");
+    }
 
     client.BaseAddress = new Uri(httpOptions.Graph.BaseAddress);
 });
@@ -74,7 +76,9 @@ builder.Services.AddHttpClient("Defender", (sp, client) =>
 {
     var httpOptions = sp.GetRequiredService<IOptions<HttpClientsOptions>>().Value;
     if (string.IsNullOrWhiteSpace(httpOptions.Defender.BaseAddress))
+    {
         throw new InvalidOperationException("HttpClients:Defender:BaseAddress must be configured.");
+    }
 
     client.BaseAddress = new Uri(httpOptions.Defender.BaseAddress);
 });

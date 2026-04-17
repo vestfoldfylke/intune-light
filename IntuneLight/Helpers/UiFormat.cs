@@ -26,7 +26,9 @@ public static class UiFormat
     public static string TextWithoutPrefixOrFallback(string? value, string prefix, string fallback = "ukjent")
     {
         if (string.IsNullOrWhiteSpace(value))
+        {
             return fallback;
+        }
 
         var cleaned = value.Replace(prefix, string.Empty);
 
@@ -41,7 +43,9 @@ public static class UiFormat
     public static string CombineOrFallback(string? first, string? second, string fallback = "ukjent")
     {
         if (string.IsNullOrWhiteSpace(first) && string.IsNullOrWhiteSpace(second))
+        {
             return fallback;
+        }
 
         return string.Join(" ",
             new[] { first, second }
@@ -52,7 +56,9 @@ public static class UiFormat
     public static string JoinOrFallback(IEnumerable<string>? values, string separator = ", ", string fallback = "ingen")
     {
         if (values is null)
+        {
             return fallback;
+        }
 
         var list = values
             .Where(v => !string.IsNullOrWhiteSpace(v))
@@ -63,4 +69,3 @@ public static class UiFormat
             : string.Join(separator, list);
     }
 }
-

@@ -25,13 +25,15 @@
     [CascadingParameter] IMudDialogInstance _dialog { get; set; } = default!;
     [Parameter] public string Json { get; set; } = "";
 
-	// Format JSON string with indentation
+    // Format JSON string with indentation
     private string Formatted
     {
         get
         {
             if (string.IsNullOrWhiteSpace(Json))
+            {
                 return string.Empty;
+            }
 
             using var doc = JsonDocument.Parse(Json);
             var options = new JsonSerializerOptions

@@ -187,7 +187,9 @@ public class ApiResponseGuard(
     {
         // Body exists - OK
         if (!string.IsNullOrWhiteSpace(body))
+        {
             return true;
+        }
 
         _logger.LogInformation(
             "API call to {System} returned success but empty body. Status {StatusCode}. Url: {Url}.",
@@ -203,7 +205,9 @@ public class ApiResponseGuard(
     {
         // Content exists - OK
         if (content is { Length: > 0 })
+        {
             return true;
+        }
 
         _logger.LogInformation(
             "API call to {System} returned success but empty binary body. Status {StatusCode}. Url: {Url}.",
@@ -292,7 +296,9 @@ public class ApiResponseGuard(
         public void Dispose()
         {
             foreach (var d in disposables)
+            {
                 d.Dispose();
+            }
         }
     }
 
@@ -301,7 +307,9 @@ public class ApiResponseGuard(
     {
         var forwarded = _httpContextAccessor.HttpContext?.Request.Headers["X-Forwarded-For"].FirstOrDefault();
         if (!string.IsNullOrEmpty(forwarded))
+        {
             return forwarded.Split(',')[0].Trim();
+        }
 
         return _httpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString();
     }

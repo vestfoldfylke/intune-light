@@ -11,8 +11,10 @@ public static class UiValidation
         string userMessage)
     {
         if (!string.IsNullOrWhiteSpace(value))
+        {
             return;
-
+        }
+        
         throw new UiValidationException(
             systemName: systemName,
             message: userMessage,

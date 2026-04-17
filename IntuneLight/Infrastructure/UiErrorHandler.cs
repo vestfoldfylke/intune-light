@@ -74,6 +74,4 @@ public sealed class UiErrorHandler(IDialogService dialogs, ISnackbar snackbar, I
 
         await _dialogs.ShowAsync<ApiErrorDialog>("Teknisk informasjon", parameters, options);
     }
-
-
 }

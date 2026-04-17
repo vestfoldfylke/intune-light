@@ -52,7 +52,9 @@
         get
         {
             if (string.IsNullOrWhiteSpace(Error?.ResponseBody))
+            {
                 return string.Empty;
+            }
 
             try
             {

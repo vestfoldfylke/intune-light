@@ -182,7 +182,7 @@
                                   Clearable="true"
                                   OnClearButtonClick="ClearSearchResult"
                                   Variant="Variant.Outlined"
-                                  MaxLength="40"
+                                  MaxLength="100"
                                   MaxLines="1"
                                   ErrorText="@_state.SearchSerialError"
                                   Margin="Margin.Dense"
@@ -360,7 +360,7 @@
 
                                 <MudStack Row AlignItems="AlignItems.Center" Class="device-card-topbar">
                                     <MudImage Width="30" Src="/img/entra.png" ObjectFit="ObjectFit.ScaleDown" />
-                                    <MudText Typo="Typo.subtitle1">Entra ID - bruker</MudText>
+                                    <MudText Typo="Typo.subtitle1">Entra ID</MudText>
                                     <MudSpacer />
                                 </MudStack>
 
@@ -424,16 +424,19 @@
                         </MudCardContent>
 
                         <MudCardActions Class="device-card-actions">
-                            @if (!string.IsNullOrWhiteSpace(_state.EntraUser?.RawJson))
-                            {
-                                <MudButton Size="Size.Small"
-                                           Variant="Variant.Text"
-                                           Color="Color.Secondary"
-                                           EndIcon="@Icons.Material.Outlined.Code"
-                                           OnClick="@(async () => await ShowJsonViewer(_state.EntraUser.RawJson))">
-                                    Vis rådata
-                                </MudButton>
-                            }
+                            <MudStack Style="width:100%" Justify="Justify.SpaceBetween" Row="true">
+                                @if (!string.IsNullOrWhiteSpace(_state.EntraUser?.RawJson))
+                                {
+                                    <MudButton Size="Size.Small"
+                                               Variant="Variant.Text"
+                                               Color="Color.Secondary"
+                                               EndIcon="@Icons.Material.Outlined.Code"
+                                               OnClick="@(async () => await ShowJsonViewer(_state.EntraUser.RawJson))">
+                                        Vis rådata
+                                    </MudButton>
+                                }
+                                <MudSpacer/>
+                            </MudStack>
                         </MudCardActions>
 
                     </MudCard>
@@ -449,7 +452,7 @@
 
                                 <MudStack Row AlignItems="AlignItems.Center" Class="device-card-topbar">
                                     <MudImage Width="30" Src="/img/entra.png" ObjectFit="ObjectFit.ScaleDown" />
-                                    <MudText Typo="Typo.subtitle1">Entra ID - enhet</MudText>
+                                    <MudText Typo="Typo.subtitle1">Entra ID</MudText>
                                     <MudSpacer />
                                     @if (_state.EntraDevice is not null)
                                     {
@@ -515,16 +518,19 @@
                         </MudCardContent>
 
                         <MudCardActions Class="device-card-actions">
-                            @if (!string.IsNullOrWhiteSpace(_state.EntraDevice?.RawJson))
-                            {
-                                <MudButton Size="Size.Small"
-                                           Variant="Variant.Text"
-                                           Color="Color.Secondary"
-                                           EndIcon="@Icons.Material.Outlined.Code"
-                                           OnClick="@(async () => await ShowJsonViewer(_state.EntraDevice.RawJson))">
-                                    Vis rådata
-                                </MudButton>
-                            }
+                            <MudStack Style="width:100%" Justify="Justify.SpaceBetween" Row="true">
+                                @if (!string.IsNullOrWhiteSpace(_state.EntraDevice?.RawJson))
+                                {
+                                    <MudButton Size="Size.Small"
+                                               Variant="Variant.Text"
+                                               Color="Color.Secondary"
+                                               EndIcon="@Icons.Material.Outlined.Code"
+                                               OnClick="@(async () => await ShowJsonViewer(_state.EntraDevice.RawJson))">
+                                        Vis rådata
+                                    </MudButton>
+                                }
+                                <MudSpacer />
+                            </MudStack>
                         </MudCardActions>
 
                     </MudCard>
@@ -542,7 +548,7 @@
 
                                     <MudStack Row AlignItems="AlignItems.Center" Class="device-card-topbar">
                                         <MudImage Width="30" Src="/img/intune.png" ObjectFit="ObjectFit.ScaleDown" />
-                                        <MudText Typo="Typo.subtitle1">Intune - enhet</MudText>
+                                        <MudText Typo="Typo.subtitle1">Intune</MudText>
                                         <MudSpacer />
                                         @if (_state.ManagedDevice is not null)
                                         {
@@ -600,16 +606,19 @@
                             </MudCardContent>
 
                             <MudCardActions Class="device-card-actions">
-                                @if (!string.IsNullOrWhiteSpace(_state.ManagedDevice.RawJson))
-                                {
-                                    <MudButton Size="Size.Small"
-                                               Variant="Variant.Text"
-                                               Color="Color.Secondary"
-                                               EndIcon="@Icons.Material.Outlined.Code"
-                                               OnClick="@(async () => await ShowJsonViewer(_state.ManagedDevice.RawJson))">
-                                        Vis rådata
-                                    </MudButton>
-                                }
+                                <MudStack Style="width:100%" Justify="Justify.SpaceBetween" Row="true">
+                                    @if (!string.IsNullOrWhiteSpace(_state.ManagedDevice.RawJson))
+                                    {
+                                        <MudButton Size="Size.Small"
+                                                   Variant="Variant.Text"
+                                                   Color="Color.Secondary"
+                                                   EndIcon="@Icons.Material.Outlined.Code"
+                                                   OnClick="@(async () => await ShowJsonViewer(_state.ManagedDevice.RawJson))">
+                                            Vis rådata
+                                        </MudButton>
+                                    }
+                                    <MudSpacer />
+                                </MudStack>
                             </MudCardActions>
 
                         </MudCard>
@@ -626,7 +635,7 @@
 
                                 <MudStack Row AlignItems="AlignItems.Center" Class="device-card-topbar">
                                     <MudImage Width="30" Src="/img/defender.png" ObjectFit="ObjectFit.ScaleDown" />
-                                    <MudText Typo="Typo.subtitle1">Defender - enhet</MudText>
+                                    <MudText Typo="Typo.subtitle1">Defender</MudText>
                                     <MudSpacer />
                                     @if (_state.DefenderDevice is not null)
                                     {
@@ -693,16 +702,19 @@
                         </MudCardContent>
 
                         <MudCardActions Class="device-card-actions">
-                            @if (!string.IsNullOrWhiteSpace(_state.DefenderDevice?.RawJson))
-                            {
-                                <MudButton Size="Size.Small"
-                                           Variant="Variant.Text"
-                                           Color="Color.Secondary"
-                                           EndIcon="@Icons.Material.Outlined.Code"
-                                           OnClick="@(async () => await ShowJsonViewer(_state.DefenderDevice.RawJson))">
-                                    Vis rådata
-                                </MudButton>
-                            }
+                            <MudStack Style="width:100%" Justify="Justify.SpaceBetween" Row="true">
+                                @if (!string.IsNullOrWhiteSpace(_state.DefenderDevice?.RawJson))
+                                {
+                                    <MudButton Size="Size.Small"
+                                               Variant="Variant.Text"
+                                               Color="Color.Secondary"
+                                               EndIcon="@Icons.Material.Outlined.Code"
+                                               OnClick="@(async () => await ShowJsonViewer(_state.DefenderDevice.RawJson))">
+                                        Vis rådata
+                                    </MudButton>
+                                }
+                                <MudSpacer />
+                            </MudStack>
                         </MudCardActions>
 
                     </MudCard>
@@ -718,7 +730,7 @@
 
                                 <MudStack Row AlignItems="AlignItems.Center" Class="device-card-topbar">
                                     <MudImage Width="30" Src="/img/autopilot.png" ObjectFit="ObjectFit.ScaleDown" />
-                                    <MudText Typo="Typo.subtitle1">Autopilot - enhet</MudText>
+                                    <MudText Typo="Typo.subtitle1">Autopilot</MudText>
                                     <MudSpacer />
                                     @if (_state.AutopilotDevice is not null)
                                     {
@@ -786,16 +798,19 @@
                         </MudCardContent>
 
                         <MudCardActions Class="device-card-actions">
-                            @if (!string.IsNullOrWhiteSpace(_state.AutopilotDevice?.RawJson))
-                            {
-                                <MudButton Size="Size.Small"
-                                           Variant="Variant.Text"
-                                           Color="Color.Secondary"
-                                           EndIcon="@Icons.Material.Outlined.Code"
-                                           OnClick="@(async () => await ShowJsonViewer(_state.AutopilotDevice.RawJson))">
-                                    Vis rådata
-                                </MudButton>
-                            }
+                            <MudStack Style="width:100%" Justify="Justify.SpaceBetween" Row="true">
+                                @if (!string.IsNullOrWhiteSpace(_state.AutopilotDevice?.RawJson))
+                                {
+                                    <MudButton Size="Size.Small"
+                                               Variant="Variant.Text"
+                                               Color="Color.Secondary"
+                                               EndIcon="@Icons.Material.Outlined.Code"
+                                               OnClick="@(async () => await ShowJsonViewer(_state.AutopilotDevice.RawJson))">
+                                        Vis rådata
+                                    </MudButton>
+                                }
+                                <MudSpacer />
+                            </MudStack>
                         </MudCardActions>
 
                     </MudCard>
@@ -811,7 +826,7 @@
 
                                 <MudStack Row AlignItems="AlignItems.Center" Class="device-card-topbar">
                                     <MudImage Width="30" Src="@pureserviceIcon" ObjectFit="ObjectFit.ScaleDown" />
-                                    <MudText Typo="Typo.subtitle1">Pureservice - bruker</MudText>
+                                    <MudText Typo="Typo.subtitle1">Pureservice</MudText>
                                     <MudSpacer />
                                 </MudStack>
                             
@@ -866,17 +881,19 @@
                         </MudCardContent>
 
                         <MudCardActions Class="device-card-actions">
-                            @if (!string.IsNullOrWhiteSpace(_state.PureserviceUser?.RawJson))
-                            {
-                                <MudButton Size="Size.Small"
-                                           Variant="Variant.Text"
-                                           Color="Color.Secondary"
-                                           EndIcon="@Icons.Material.Outlined.Code"
-                                           OnClick="@(async () => await ShowJsonViewer(_state.PureserviceUser.RawJson))">
-                                    Vis rådata
-                                </MudButton>
-                            }
-                    
+                            <MudStack Style="width:100%" Justify="Justify.SpaceBetween" Row="true">
+                                @if (!string.IsNullOrWhiteSpace(_state.PureserviceUser?.RawJson))
+                                {
+                                    <MudButton Size="Size.Small"
+                                               Variant="Variant.Text"
+                                               Color="Color.Secondary"
+                                               EndIcon="@Icons.Material.Outlined.Code"
+                                               OnClick="@(async () => await ShowJsonViewer(_state.PureserviceUser.RawJson))">
+                                        Vis rådata
+                                    </MudButton>
+                                }
+                                <MudSpacer />
+                            </MudStack>
                         </MudCardActions>
                 
                     </MudCard>
@@ -892,7 +909,7 @@
 
                                 <MudStack Row AlignItems="AlignItems.Center" Class="device-card-topbar">
                                     <MudImage Width="30" Src="@pureserviceIcon" ObjectFit="ObjectFit.ScaleDown" />
-                                    <MudText Typo="Typo.subtitle1">Pureservice - enhet</MudText>
+                                    <MudText Typo="Typo.subtitle1">Pureservice</MudText>
                                     <MudSpacer />
                                     @if (_state.PureserviceAssetBySn is not null)
                                     {
@@ -957,16 +974,19 @@
                         </MudCardContent>
 
                         <MudCardActions Class="device-card-actions">
-                            @if (!string.IsNullOrWhiteSpace(_state.PureserviceAssetBySn?.RawJson))
-                            {
-                                <MudButton Size="Size.Small"
-                                           Variant="Variant.Text"
-                                           Color="Color.Secondary"
-                                           EndIcon="@Icons.Material.Outlined.Code"
-                                           OnClick="@(async () => await ShowJsonViewer(_state.PureserviceAssetBySn.RawJson))">
-                                    Vis rådata
-                                </MudButton>
-                            }
+                            <MudStack Style="width:100%" Justify="Justify.SpaceBetween" Row="true">
+                                @if (!string.IsNullOrWhiteSpace(_state.PureserviceAssetBySn?.RawJson))
+                                {
+                                    <MudButton Size="Size.Small"
+                                               Variant="Variant.Text"
+                                               Color="Color.Secondary"
+                                               EndIcon="@Icons.Material.Outlined.Code"
+                                               OnClick="@(async () => await ShowJsonViewer(_state.PureserviceAssetBySn.RawJson))">
+                                        Vis rådata
+                                    </MudButton>
+                                }
+                                <MudSpacer />
+                            </MudStack>
                         </MudCardActions>
 
                     </MudCard>
@@ -982,7 +1002,7 @@
 
                                 <MudStack Row AlignItems="AlignItems.Center" Class="device-card-topbar">
                                     <MudImage Width="30" Src="@pureserviceIcon" ObjectFit="ObjectFit.ScaleDown" />
-                                    <MudText Typo="Typo.subtitle1">Pureservice - sak</MudText>
+                                    <MudText Typo="Typo.subtitle1">Pureservice</MudText>
                                     <MudSpacer />
                                     @if (_state.PureserviceTicket is not null)
                                     {
@@ -1047,16 +1067,19 @@
                         </MudCardContent>
 
                         <MudCardActions Class="device-card-actions">
-                            @if (!string.IsNullOrWhiteSpace(_state.PureserviceRelationships?.RawJson))
-                            {
-                                <MudButton Size="Size.Small"
-                                           Variant="Variant.Text"
-                                           Color="Color.Secondary"
-                                           EndIcon="@Icons.Material.Outlined.Code"
-                                           OnClick="@(async () => await ShowJsonViewer(_state.PureserviceRelationships.RawJson))">
-                                    Vis rådata
-                                </MudButton>
-                            }
+                            <MudStack Style="width:100%" Justify="Justify.SpaceBetween" Row="true">
+                                @if (!string.IsNullOrWhiteSpace(_state.PureserviceRelationships?.RawJson))
+                                {
+                                    <MudButton Size="Size.Small"
+                                               Variant="Variant.Text"
+                                               Color="Color.Secondary"
+                                               EndIcon="@Icons.Material.Outlined.Code"
+                                               OnClick="@(async () => await ShowJsonViewer(_state.PureserviceRelationships.RawJson))">
+                                        Vis rådata
+                                    </MudButton>
+                                }
+                                <MudSpacer />
+                            </MudStack>
                         </MudCardActions>
 
                     </MudCard>
@@ -1139,16 +1162,19 @@
                         </MudCardContent>
 
                         <MudCardActions Class="device-card-actions">
-                            @if (!string.IsNullOrWhiteSpace(_state.DeviceCredential?.RawJson))
-                            {
-                                <MudButton Size="Size.Small"
-                                           Variant="Variant.Text"
-                                           Color="Color.Secondary"
-                                           EndIcon="@Icons.Material.Outlined.Code"
-                                           OnClick="@(async () => await ShowJsonViewer(_state.DeviceCredential.RawJson))">
-                                    Vis rådata
-                                </MudButton>
-                            }
+                            <MudStack Style="width:100%" Justify="Justify.SpaceBetween" Row="true">
+                                @if (!string.IsNullOrWhiteSpace(_state.DeviceCredential?.RawJson))
+                                {
+                                    <MudButton Size="Size.Small"
+                                               Variant="Variant.Text"
+                                               Color="Color.Secondary"
+                                               EndIcon="@Icons.Material.Outlined.Code"
+                                               OnClick="@(async () => await ShowJsonViewer(_state.DeviceCredential.RawJson))">
+                                        Vis rådata
+                                    </MudButton>
+                                }
+                                <MudSpacer />
+                            </MudStack>
                         </MudCardActions>
 
                     </MudCard>
@@ -1230,16 +1256,19 @@
                         </MudCardContent>
 
                         <MudCardActions Class="device-card-actions">
-                            @if (!string.IsNullOrWhiteSpace(_state.BitlockerRecoveryKey?.RawJson))
-                            {
-                                <MudButton Size="Size.Small"
-                                           Variant="Variant.Text"
-                                           Color="Color.Secondary"
-                                           EndIcon="@Icons.Material.Outlined.Code"
-                                           OnClick="@(async () => await ShowJsonViewer(_state.BitlockerRecoveryKey.RawJson))">
-                                    Vis rådata
-                                </MudButton>
-                            }
+                            <MudStack Style="width:100%" Justify="Justify.SpaceBetween" Row="true">
+                                @if (!string.IsNullOrWhiteSpace(_state.BitlockerRecoveryKey?.RawJson))
+                                {
+                                    <MudButton Size="Size.Small"
+                                               Variant="Variant.Text"
+                                               Color="Color.Secondary"
+                                               EndIcon="@Icons.Material.Outlined.Code"
+                                               OnClick="@(async () => await ShowJsonViewer(_state.BitlockerRecoveryKey.RawJson))">
+                                        Vis rådata
+                                    </MudButton>
+                                }
+                                <MudSpacer />
+                            </MudStack>
                         </MudCardActions>
 
                     </MudCard>
@@ -1326,10 +1355,14 @@
     private async Task HandleSearchKeyDown(KeyboardEventArgs args)
     {
         if (args.Key != "Enter")
+        {
             return;
+        }
 
         if (_state.IsFetching || !_state.IsSearchSerialValid)
+        {
             return;
+        }
 
         await SearchAsync();
     }
@@ -1339,7 +1372,9 @@
     {
         // Guard against invalid input or concurrent searches.
         if (!_state.IsSearchSerialValid || _state.IsFetching)
+        {
             return;
+        }
 
         _state.IsFetching = true;
         _state.HasSearched = false;
@@ -1359,7 +1394,9 @@
                     // If no managed device found, still try to fetch Autopilot device info as it can exist without being enrolled.
                     results.AutopilotDevice = await _intuneService.GetAutopilotDeviceBySerialAsync(_state.SearchSerial);
                     if (results.AutopilotDevice is null)
-                        return;
+                    { 
+                        return; 
+                    }
 
                     // Fetch Entra device from Autopilot AAD device id
                     results.EntraDevice = await _entraDirectoryService.GetDeviceByAzureAdDeviceIdAsync(results.AutopilotDevice.AzureAdDeviceId);
@@ -1379,14 +1416,18 @@
 
                 // Fetch device isolation status from defender
                 if (results.DefenderDevice is not null)
+                {
                     results.IsIsolated = await _defenderService.GetIsolationStatusByMachineId(results.DefenderDevice.Id);
+                }
 
                 // Fetch pureservice asset by serial number, then by id for full details
                 results.PureserviceAssetBySn = await _pureserviceService.GetAssetBySerialAsync(results.ManagedDevice.SerialNumber);
 
                 // Fetch pureservice asset relationships by asset id
                 if (results.PureserviceAssetBySn is not null)
+                {
                     results.PureserviceRelationships = await _pureserviceService.GetRelationshipsByAssetIdAsync(results.PureserviceAssetBySn.Id.ToString());
+                }
 
                 // Try to get the first ticket related to the asset
                 if (results.PureserviceRelationships is not null)
@@ -1399,7 +1440,9 @@
                         var user = results.PureserviceRelationships.Linked.Users.FirstOrDefault(); // eller match via links
 
                         if (ticket != null)
+                        {
                             results.PureserviceTicket = ticket;
+                        }
                     }
                 }
 
@@ -1408,34 +1451,45 @@
 
                 // Fetch Pureservice user by email (UPN).
                 if (!string.IsNullOrWhiteSpace(results.ManagedDevice.UserPrincipalName))
+                {
                     results.PureserviceUser = await _pureserviceService.GetUserByEmailAsync(results.ManagedDevice.UserPrincipalName);
+                }
 
                 // Resolve Entra user by UPN.
                 if (!string.IsNullOrWhiteSpace(results.ManagedDevice.UserPrincipalName))
-                    results.EntraUser = await _entraDirectoryService.GetUserByUpnAsync(results.ManagedDevice.UserPrincipalName);
+                {
+                    results.EntraUser = await _entraDirectoryService.GetUserByUpnAsync(results.ManagedDevice.UserPrincipalName);    
+                }
 
                 // Fetch entra user photo
                 if (results.EntraUser is not null)
+                {
                     results.EntraUserPhoto = await _entraDirectoryService.GetUserPhotoAsync(results.EntraUser.Id);
+                }
 
                 // Try to count UserDevice
                 if (results.EntraUser is not null)
+                {
                     results.EntraDeviceCount = await _entraDirectoryService.GetRegisteredDevicesForUser(results.EntraUser.Id);
+                }
 
                 // Count and attach raw json from entra device query
                 if (results.EntraDeviceCount is not null)
+                {
                     results.UserDeviceCount = results.EntraDeviceCount.Count;
+                }
             },
             after: () =>
             {
                 // Only persist results when we actually found a device
                 if (results.ManagedDevice is not null)
+                {
                     _state.SetResults(results);
+                }
 
                 _state.IsFetching = false;
                 _state.HasSearched = true;
                 StopSearchTimer();
-
             });
     }
 
@@ -1459,7 +1513,9 @@
     private async Task ShowJsonViewer(string json)
     {
         if (string.IsNullOrWhiteSpace(json))
+        {
             return;
+        }
 
         var parameters = new DialogParameters
         {
@@ -1501,7 +1557,9 @@
     private void StopSearchTimer()
     {
         if (_searchTimer is null)
+        {
             return;
+        }
 
         _searchTimer.Stop();
         _searchTimer.Dispose();
@@ -1536,7 +1594,9 @@
     private (string icon, Color color) GetEntraUserStatusBadge(EntraUser? user)
     {
         if (user is null)
+        {
             return (Icons.Material.Outlined.HelpOutline, Color.Default);
+        }
 
         return user.AccountEnabled
             ? (Icons.Material.Outlined.CheckCircle, Color.Success)
