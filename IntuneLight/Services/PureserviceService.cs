@@ -1,5 +1,6 @@
 ﻿using IntuneLight.Infrastructure;
 using IntuneLight.Models.Pureservice;
+using Microsoft.Extensions.Options;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -13,7 +14,7 @@ public interface IPureserviceService
     Task<PureserviceAsset?> GetAssetBySerialAsync(string serialNumber);
     Task<PureserviceRelationshipSearchResponse?> GetRelationshipsByAssetIdAsync(string assetId);
     Task UpdateAssetStatusAsync(string assetId, int typeId);
-    Task<PureserviceTicket?> CreateOffboardingTicketAsync(string subject, string description, int userId, int agentId, int? agentDepartmentId, int assetId);
+    Task<PureserviceTicket?> CreateOffboardingTicketAsync(string subject, string description, int userId, int assetId);
     Task<string?> GetAssetTypeClassNameAsync(int typeId);
 }
 
@@ -21,12 +22,14 @@ public sealed class PureserviceService
 (
     IHttpClientFactory httpClientFactory, 
     ITokenService tokenService, 
-    IApiResponseGuard guard) : IPureserviceService
+    IApiResponseGuard guard,
+    IOptions<PureserviceOffboardingOptions> offboardingOptions) : IPureserviceService
 {
     // Dependencies
     private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
     private readonly ITokenService _tokenService = tokenService;
     private readonly IApiResponseGuard _guard = guard;
+    private readonly PureserviceOffboardingOptions _offboardingOptions = offboardingOptions.Value;
 
     // JSON serializer options
     private readonly JsonSerializerOptions _jsonSerializerOptions = new() { PropertyNameCaseInsensitive = true };
@@ -376,7 +379,7 @@ public sealed class PureserviceService
         var linksDict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(assetDict["links"].GetRawText())!;
 
         // Replace status with sold status id from options
-        linksDict["status"] = JsonSerializer.SerializeToElement(new { id = PureserviceOffboardingConfig.AssetStatusSoldId });
+        linksDict["status"] = JsonSerializer.SerializeToElement(new { id = _offboardingOptions.AssetStatusSoldId });
         assetDict["links"] = JsonSerializer.SerializeToElement(linksDict);
 
         // Build payload with asset type class name as root key
@@ -399,7 +402,7 @@ public sealed class PureserviceService
     }
 
     // Creates a new offboarding ticket in Pureservice, links it to the given asset, and assigns it to the given agent.
-    public async Task<PureserviceTicket?> CreateOffboardingTicketAsync(string subject, string description, int userId, int agentId, int? agentDepartmentId, int assetId)
+    public async Task<PureserviceTicket?> CreateOffboardingTicketAsync(string subject, string description, int userId, int assetId)
     {
         // Validate input
         UiValidation.RequireNotNullOrWhiteSpace(
@@ -434,30 +437,20 @@ public sealed class PureserviceService
                     description,
                     origin = 1,
                     isMarkedForDeletion = false,
-                    // TODO: visibility = 0 overstyres av Pureservice-konfig og saken vises som "Synlig for sluttbruker".
-                    // Sjekk hvilken verdi som tilsvarer "Ikke synlig" i Pureservice API og oppdater verdien.
-                    // Test ved å opprette sak manuelt i portalen med "Ikke synlig" og fange verdien i F12.
-                    visibility = 0,
+                    visibility = 2, // 0 = Visible, 2 = Not Visible
                     links = new
                     {
                         user = new { id = userId },
-                        ticketType = new { id = PureserviceOffboardingConfig.TicketTypeId },
-                        priority = new { id = PureserviceOffboardingConfig.PriorityId },
-                        status = new { id = PureserviceOffboardingConfig.StatusId },
-                        source = new { id = PureserviceOffboardingConfig.SourceId },
-                        assignedAgent = new { id = agentId },
-                        assignedTeam = new { id = PureserviceOffboardingConfig.TeamId },
-
-                        // TODO: assignedDepartment er hardkodet via options (DepartmentId) fordi service-kontoen
-                        // ikke har tilgang til alle avdelinger i Pureservice. For å tildele riktig avdeling basert
-                        // på agenten som kjører offboardingen, må service-kontoen gis tilgang til alle relevante
-                        // avdelinger i Pureservice-administrasjonen. Da kan agentDepartmentId-parameteren brukes
-                        // istedenfor PureserviceOffboardingConfig.DepartmentId.
-                        //assignedDepartment = new { id = agentDepartmentId ?? PureserviceOffboardingConfig.DepartmentId },
-                        assignedDepartment = new { id = PureserviceOffboardingConfig.DepartmentId },
-                        category1 = new { id = PureserviceOffboardingConfig.Category1Id },
-                        category2 = new { id = PureserviceOffboardingConfig.Category2Id },
-                        requestType = new { id = PureserviceOffboardingConfig.RequestTypeId },
+                        ticketType = new { id = _offboardingOptions.TicketTypeId },
+                        priority = new { id = _offboardingOptions.PriorityId },
+                        status = new { id = _offboardingOptions.StatusId },
+                        source = new { id = _offboardingOptions.SourceId },
+                        assignedAgent = new { id = _offboardingOptions.AgentId },
+                        assignedTeam = new { id = _offboardingOptions.TeamId },
+                        assignedDepartment = new { id = _offboardingOptions.DepartmentId },
+                        category1 = new { id = _offboardingOptions.Category1Id },
+                        category2 = new { id = _offboardingOptions.Category2Id },
+                        requestType = new { id = _offboardingOptions.RequestTypeId },
                         relationships = new[] { new { temporaryId, type = "relationship" } }
                     }
                 }
@@ -474,7 +467,7 @@ public sealed class PureserviceService
                         solvingRelationship = false,
                         links = new
                         {
-                            type = new { id = PureserviceOffboardingConfig.RelationshipTypeId },
+                            type = new { id = _offboardingOptions.RelationshipTypeId },
                             toAsset = new { id = assetId }
                         },
                         temporaryId
@@ -520,7 +513,7 @@ public sealed class PureserviceService
         var linksDict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(ticketDict["links"].GetRawText())!;
 
         // Set assigned agent
-        linksDict["assignedAgent"] = JsonSerializer.SerializeToElement(new { id = agentId.ToString(), type = "user" });
+        linksDict["assignedAgent"] = JsonSerializer.SerializeToElement(new { id = _offboardingOptions.AgentId.ToString(), type = "user" });
         ticketDict["links"] = JsonSerializer.SerializeToElement(linksDict);
 
         // Build PUT payload

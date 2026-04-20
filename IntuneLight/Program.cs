@@ -53,8 +53,18 @@ builder.Services.Configure<EntraIdOptions>(builder.Configuration.GetSection("Ent
 // Bind HttpClients options (BaseAddress)
 builder.Services.Configure<HttpClientsOptions>(builder.Configuration.GetRequiredSection("HttpClients"));
 
-// Bind Pureservice options from appsettings (base address)
+// Bind Pureservice options from appsettings/env vars
 builder.Services.Configure<PureserviceOptions>(builder.Configuration.GetSection("Pureservice"));
+
+// Bind Pureservice offboarding options and validate required fields
+builder.Services.Configure<PureserviceOffboardingOptions>(builder.Configuration.GetSection("PureserviceOffboarding"));
+
+var offboardingOptions = builder.Configuration
+    .GetSection("PureserviceOffboarding")
+    .Get<PureserviceOffboardingOptions>()!;
+
+if (offboardingOptions.AgentId == 0 || offboardingOptions.DepartmentId == 0)
+    throw new InvalidOperationException("PureserviceOffboarding AgentId og DepartmentId må konfigureres.");
 
 // Register token service
 builder.Services.AddSingleton<ITokenService, TokenService>();
