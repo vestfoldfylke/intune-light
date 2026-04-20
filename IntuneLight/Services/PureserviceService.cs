@@ -438,6 +438,7 @@ public sealed class PureserviceService
                     origin = 1,
                     isMarkedForDeletion = false,
                     visibility = 2, // 0 = Visible, 2 = Not Visible
+                    solution = "<p>Saken er håndtert automatisk av IntuneLight.</p>",
                     links = new
                     {
                         user = new { id = userId },
@@ -445,8 +446,6 @@ public sealed class PureserviceService
                         priority = new { id = _offboardingOptions.PriorityId },
                         status = new { id = _offboardingOptions.StatusId },
                         source = new { id = _offboardingOptions.SourceId },
-                        assignedAgent = new { id = _offboardingOptions.AgentId },
-                        assignedTeam = new { id = _offboardingOptions.TeamId },
                         assignedDepartment = new { id = _offboardingOptions.DepartmentId },
                         category1 = new { id = _offboardingOptions.Category1Id },
                         category2 = new { id = _offboardingOptions.Category2Id },
