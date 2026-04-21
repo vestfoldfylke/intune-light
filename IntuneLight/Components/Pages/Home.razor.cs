@@ -441,7 +441,6 @@ public partial class Home : ComponentBase
             new("Fjerner fra Entra", OffboardingStepStatus.Pending),
             new("Fjerner fra Intune", OffboardingStepStatus.Pending),
             new("Tagger i Defender", OffboardingStepStatus.Pending),
-            new("Oppdaterer status i Pureservice", OffboardingStepStatus.Pending),
             new("Oppretter sak i Pureservice", OffboardingStepStatus.Pending),
         ];
 
@@ -489,17 +488,6 @@ public partial class Home : ComponentBase
 
                 await _intuneService.DeleteAutopilotDeviceAsync(_state.AutopilotDevice.Id, 
                       _state.BuildAuditContext());
-
-                // Poll until removed
-                while (!ct.IsCancellationRequested)
-                {
-                    await Task.Delay(5000, ct);
-                    var device = await _intuneService.GetAutopilotDeviceBySerialAsync(_state.SearchSerial);
-                    if (device is null)
-                    {
-                        break;
-                    }
-                }
             }, ct);
         }
 
@@ -593,10 +581,13 @@ public partial class Home : ComponentBase
         // Step 6: Remove from Intune - skipped as device is automatically removed after wipe
         if (withWipe)
         {
-            UpdateStep("Fjerner fra Intune", ct.IsCancellationRequested
-                ? OffboardingStepStatus.Skipped
-                : OffboardingStepStatus.Success,
-                ct.IsCancellationRequested ? "Avbrutt av bruker" : "Fjernet av wipe");
+            var wipeStep = _offboardingSteps.FirstOrDefault(s => s.StepName == "Wiper enhet");
+            var wipeSuccess = wipeStep?.Status == OffboardingStepStatus.Success;
+
+            UpdateStep("Fjerner fra Intune",
+                wipeSuccess ? OffboardingStepStatus.Success : OffboardingStepStatus.Skipped,
+                ct.IsCancellationRequested ? "Avbrutt av bruker" :
+                wipeSuccess ? "Fjernet av wipe" : "Ikke utført");
         }
         else
         {
@@ -617,22 +608,7 @@ public partial class Home : ComponentBase
             }, ct);
         }
 
-        // Step 8: Update status in Pureservice
-        if (_state.PureserviceAssetBySn is null)
-        {
-            UpdateStep("Oppdaterer status i Pureservice", OffboardingStepStatus.Skipped, "Ikke funnet");
-        }
-        else
-        {
-            await RunOffboardingStepAsync("Oppdaterer status i Pureservice", async () =>
-            {
-                await _pureserviceService.UpdateAssetStatusAsync(
-                      _state.PureserviceAssetBySn.Id.ToString(),
-                      _state.PureserviceAssetBySn.TypeId);
-            }, ct);
-        }
-
-        // Step 9: Create ticket in Pureservice
+        // Step 8: Create ticket in Pureservice
         if (_state.PureserviceAssetBySn is null || _state.PureserviceUser is null)
         {
             UpdateStep("Oppretter sak i Pureservice", OffboardingStepStatus.Skipped, "Mangler asset eller bruker i Pureservice");
@@ -641,15 +617,10 @@ public partial class Home : ComponentBase
         {
             await RunOffboardingStepAsync("Oppretter sak i Pureservice", async () =>
             {
-                var agent = await _pureserviceService.GetUserByEmailAsync(UserCtx.Upn!)
-                            ?? throw new InvalidOperationException("Kunne ikke finne Pureservice-bruker for innlogget bruker.");
-
                 await _pureserviceService.CreateOffboardingTicketAsync(
                     subject: "Privatisering av pc",
                     description: $"<p>Maskinen skal privatiseres.</p><p>Behandlet av: {UserCtx.Upn}</p><p>LAPS-passord: {_lapsPassword ?? "ikke tilgjengelig"}</p><p>BitLocker-nøkkel: {_bitlockerKey ?? "ikke tilgjengelig"}</p>",
                     userId: _state.PureserviceUser.Id,
-                    agentId: agent.Id,
-                    agentDepartmentId: agent.CompanyDepartmentId,
                     assetId: _state.PureserviceAssetBySn.Id);
             }, ct);
         }
