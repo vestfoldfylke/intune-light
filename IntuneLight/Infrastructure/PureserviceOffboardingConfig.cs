@@ -16,6 +16,9 @@ public class PureserviceOffboardingOptions
     public int AssetStatusSoldId { get; set; } = 29;
 
     // Required: no defaults as these values differ between environments and Pureservice tenants.
+
+    // PureService company ID. Used as assignedDepartment in ticket payload.
+    // Note: Despite the name, PureService expects companyId here, not companyDepartmentId.
     public required int DepartmentId { get; set; }
     public required int AgentId { get; set; }
 }

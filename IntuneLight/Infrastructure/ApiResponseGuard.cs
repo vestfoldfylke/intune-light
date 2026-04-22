@@ -273,7 +273,9 @@ public class ApiResponseGuard(
             [SystemNames.IntuneAutopilotDelete] = "AutopilotDelete",
 
             // Defender response actions
-            [SystemNames.DefenderAvScan] = "DefenderAvScan"
+            [SystemNames.DefenderAvScan] = "DefenderAvScan",
+            [SystemNames.DefenderTag] = "DefenderTag"
+
         }.ToFrozenDictionary();
 
     // Pushes all required audit properties to log context for Azure Log Analytics ingestion.
