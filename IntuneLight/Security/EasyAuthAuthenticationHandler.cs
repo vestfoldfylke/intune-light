@@ -24,13 +24,6 @@ public class EasyAuthAuthenticationHandler(
     // Authenticates the current request using the Easy Auth principal header.
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        Logger.LogInformation(
-            "EasyAuth headers present: Principal={Principal}, Name={Name}, Id={Id}, Idp={Idp}",
-            Request.Headers.ContainsKey("X-MS-CLIENT-PRINCIPAL"),
-            Request.Headers.ContainsKey("X-MS-CLIENT-PRINCIPAL-NAME"),
-            Request.Headers.ContainsKey("X-MS-CLIENT-PRINCIPAL-ID"),
-            Request.Headers.ContainsKey("X-MS-CLIENT-PRINCIPAL-IDP"));
-
         if (!Request.Headers.TryGetValue("X-MS-CLIENT-PRINCIPAL", out var principalHeader))
         {
             Logger.LogWarning("EasyAuth: X-MS-CLIENT-PRINCIPAL header not present.");
@@ -94,26 +87,6 @@ public class EasyAuthAuthenticationHandler(
 
         var idType = claims.FirstOrDefault(c =>
             string.Equals(c.Type, "idtyp", StringComparison.OrdinalIgnoreCase))?.Value;
-
-        Logger.LogInformation(
-            "EasyAuth auth summary: AuthType={AuthType}, NameType={NameType}, RoleType={RoleType}, ClaimCount={ClaimCount}",
-            payload.AuthTyp ?? "(unknown)",
-            identity.NameClaimType,
-            identity.RoleClaimType,
-            claims.Count);
-
-        Logger.LogInformation(
-            "EasyAuth app summary: HasAppId={HasAppId}, HasObjectId={HasObjectId}, IdType={IdType}",
-            hasAppId,
-            hasObjectId,
-            idType ?? "(none)");
-
-        Logger.LogInformation(
-            "EasyAuth role evaluation: Roles={Roles}, Metrics={Metrics}, User={User}, Admin={Admin}",
-            roleClaims.Count > 0 ? string.Join(", ", roleClaims) : "(none)",
-            principal.IsInRole("IntuneLight.Metrics"),
-            principal.IsInRole("IntuneLight.User"),
-            principal.IsInRole("IntuneLight.Admin"));
 
         var ticket = new AuthenticationTicket(principal, Scheme.Name);
         return Task.FromResult(AuthenticateResult.Success(ticket));
