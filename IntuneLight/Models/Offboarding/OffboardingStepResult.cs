@@ -25,7 +25,8 @@ public enum OffboardingMethod
 {
     None,
     RemoveAutopilot,
-    WithWipe
+    WithWipe,
+    ForceDelete
 }
 
 public sealed record OffboardingSelection(OffboardingRoutine Routine, OffboardingMethod Method);
