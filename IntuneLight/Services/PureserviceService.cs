@@ -405,47 +405,26 @@ public sealed class PureserviceService
         var contents = await Task.WhenAll(responses.Select(r => r.Content.ReadAsStringAsync()));
 
         // Deserialize and cache each response
-        if (_guard.EnsureSuccessOrNoData(responses[0], SystemNames.PureserviceConfigCache, "status/", contents[0]) &&
-            _guard.EnsureJsonBody(contents[0], SystemNames.PureserviceConfigCache, "status/", (int)responses[0].StatusCode))
-        {
-            _configCache.TicketStatuses = JsonSerializer.Deserialize<PureserviceTicketStatusSearchResponse>(contents[0], _jsonSerializerOptions)?.Statuses ?? [];
-        }
+        _configCache.TicketStatuses = DeserializeCacheResponse<PureserviceTicketStatusSearchResponse, PureserviceTicketStatus>(
+            responses[0], contents[0], "status/", r => r.Statuses);
 
-        if (_guard.EnsureSuccessOrNoData(responses[1], SystemNames.PureserviceConfigCache, "tickettype/", contents[1]) &&
-            _guard.EnsureJsonBody(contents[1], SystemNames.PureserviceConfigCache, "tickettype/", (int)responses[1].StatusCode))
-        {
-            _configCache.TicketTypes = JsonSerializer.Deserialize<PureserviceTicketTypeSearchResponse>(contents[1], _jsonSerializerOptions)?.TicketTypes ?? [];
-        }
+        _configCache.TicketTypes = DeserializeCacheResponse<PureserviceTicketTypeSearchResponse, PureserviceTicketType>(
+            responses[1], contents[1], "tickettype/", r => r.TicketTypes);
 
-        if (_guard.EnsureSuccessOrNoData(responses[2], SystemNames.PureserviceConfigCache, "priority/", contents[2]) &&
-            _guard.EnsureJsonBody(contents[2], SystemNames.PureserviceConfigCache, "priority/", (int)responses[2].StatusCode))
-        {
-            _configCache.Priorities = JsonSerializer.Deserialize<PureservicePrioritySearchResponse>(contents[2], _jsonSerializerOptions)?.Priorities ?? [];
-        }
+        _configCache.Priorities = DeserializeCacheResponse<PureservicePrioritySearchResponse, PureservicePriority>(
+            responses[2], contents[2], "priority/", r => r.Priorities);
 
-        if (_guard.EnsureSuccessOrNoData(responses[3], SystemNames.PureserviceConfigCache, "source/", contents[3]) &&
-            _guard.EnsureJsonBody(contents[3], SystemNames.PureserviceConfigCache, "source/", (int)responses[3].StatusCode))
-        {
-            _configCache.Sources = JsonSerializer.Deserialize<PureserviceSourceSearchResponse>(contents[3], _jsonSerializerOptions)?.Sources ?? [];
-        }
+        _configCache.Sources = DeserializeCacheResponse<PureserviceSourceSearchResponse, PureserviceSource>(
+            responses[3], contents[3], "source/", r => r.Sources);
 
-        if (_guard.EnsureSuccessOrNoData(responses[4], SystemNames.PureserviceConfigCache, "requesttype/", contents[4]) &&
-            _guard.EnsureJsonBody(contents[4], SystemNames.PureserviceConfigCache, "requesttype/", (int)responses[4].StatusCode))
-        {
-            _configCache.RequestTypes = JsonSerializer.Deserialize<PureserviceRequestTypeSearchResponse>(contents[4], _jsonSerializerOptions)?.RequestTypes ?? [];
-        }
+        _configCache.RequestTypes = DeserializeCacheResponse<PureserviceRequestTypeSearchResponse, PureserviceRequestType>(
+            responses[4], contents[4], "requesttype/", r => r.RequestTypes);
 
-        if (_guard.EnsureSuccessOrNoData(responses[5], SystemNames.PureserviceConfigCache, "category/", contents[5]) &&
-            _guard.EnsureJsonBody(contents[5], SystemNames.PureserviceConfigCache, "category/", (int)responses[5].StatusCode))
-        {
-            _configCache.Categories = JsonSerializer.Deserialize<PureserviceCategorySearchResponse>(contents[5], _jsonSerializerOptions)?.Categories ?? [];
-        }
+        _configCache.Categories = DeserializeCacheResponse<PureserviceCategorySearchResponse, PureserviceCategory>(
+            responses[5], contents[5], "category/", r => r.Categories);
 
-        if (_guard.EnsureSuccessOrNoData(responses[6], SystemNames.PureserviceConfigCache, "relationshiptype/", contents[6]) &&
-            _guard.EnsureJsonBody(contents[6], SystemNames.PureserviceConfigCache, "relationshiptype/", (int)responses[6].StatusCode))
-        {
-            _configCache.RelationshipTypes = JsonSerializer.Deserialize<PureserviceRelationshipTypeSearchResponse>(contents[6], _jsonSerializerOptions)?.RelationshipTypes ?? [];
-        }
+        _configCache.RelationshipTypes = DeserializeCacheResponse<PureserviceRelationshipTypeSearchResponse, PureserviceRelationshipType>(
+            responses[6], contents[6], "relationshiptype/", r => r.RelationshipTypes);
     }
 
     #endregion
@@ -635,6 +614,27 @@ public sealed class PureserviceService
     private static string NormalizeEmailForLookup(string email)
     {
         return Regex.Replace(email, @"\.[sSlL]\.", ".", RegexOptions.IgnoreCase);
+    }
+
+    // Deserializes a cached API response and returns the result, or an empty list if the response is invalid.
+    private List<T> DeserializeCacheResponse<TResponse, T>(
+        HttpResponseMessage response,
+        string content,
+        string url,
+        Func<TResponse, List<T>?> selector) where TResponse : class
+    {
+        if (!_guard.EnsureSuccessOrNoData(response, SystemNames.PureserviceConfigCache, url, content))
+        {
+            return [];
+        }
+
+        if (!_guard.EnsureJsonBody(content, SystemNames.PureserviceConfigCache, url, (int)response.StatusCode))
+        {
+            return [];
+        }
+
+        var payload = JsonSerializer.Deserialize<TResponse>(content, _jsonSerializerOptions);
+        return payload is null ? [] : selector(payload) ?? [];
     }
 
     #endregion
