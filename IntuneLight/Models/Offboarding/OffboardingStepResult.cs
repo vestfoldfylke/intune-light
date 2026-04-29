@@ -14,9 +14,18 @@ public sealed record OffboardingStepResult(
     OffboardingStepStatus Status,
     string? Message = null);
 
-public enum OffboardingType 
-{ 
-    None, 
-    RemoveAutopilot, 
-    WithWipe 
+public enum OffboardingRoutine
+{
+    None,
+    Privatization,
+    Deletion
 }
+
+public enum OffboardingMethod
+{
+    None,
+    RemoveAutopilot,
+    WithWipe
+}
+
+public sealed record OffboardingSelection(OffboardingRoutine Routine, OffboardingMethod Method);

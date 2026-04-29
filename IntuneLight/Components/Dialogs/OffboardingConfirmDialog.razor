@@ -1,54 +1,108 @@
 ﻿@using IntuneLight.Models.Offboarding
 
-<MudDialog>
+<MudDialog ActionsClass="pa-2">
     <TitleContent>
-        <MudText Typo="Typo.h6">
-            <MudIcon Icon="@Icons.Material.Outlined.Logout" Class="mr-2" Color="Color.Error" />
-            Start offboarding
-        </MudText>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@(CanOffboard ? Icons.Material.Outlined.Logout : Icons.Material.Outlined.AssignmentLate)"
+                     Color="Color.Error" />
+            <MudText Typo="Typo.h6">
+                @GetTitle()
+            </MudText>
+        </MudStack>
     </TitleContent>
     <DialogContent>
-        <MudStack Spacing="3">
-            <MudText Typo="Typo.body1">
-                Dette er <b>irreversibelt</b> og vil påvirke enheten i flere systemer.
-            </MudText>
-            <MudAlert Severity="Severity.Warning" Dense="true">
-                Sørg for at enheten er online og aktiv i Intune før du fortsetter.
-            </MudAlert>
-            <MudRadioGroup @bind-Value="_selectedType">
-                <MudStack Spacing="3">
-                    <MudRadio Value="OffboardingType.RemoveAutopilot" Color="Color.Default">
-                        <MudStack Spacing="0">
-                            <MudText Typo="Typo.body1"><b>Fjern fra Autopilot</b></MudText>
-                            <MudText Typo="Typo.body2">Fjerner fra Autopilot, oppdaterer Defender og Pureservice. Bruker resetter selv via firmaportal.</MudText>
-                        </MudStack>
-                    </MudRadio>
-                    <MudRadio Value="OffboardingType.WithWipe" Color="Color.Error">
-                        <MudStack Spacing="0">
-                            <MudText Typo="Typo.body1"><b>Wipe enhet</b></MudText>
-                            <MudText Typo="Typo.body2">Sender wipe-kommando og fjerner enheten fra Intune og Entra. Enheten nullstilles av IT.</MudText>
-                        </MudStack>
-                    </MudRadio>
-                </MudStack>
-            </MudRadioGroup>
-        </MudStack>
+        @if (!CanOffboard)
+        {
+            <MudStack Spacing="3" Class="my-5">
+                @if (!HasPureserviceTicket && IsAssetSold)
+                {
+                    <MudAlert Severity="Severity.Warning" Dense="true">
+                        Sak må opprettes i PureService før privatisering kan kjøres.
+                    </MudAlert>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Warning" Dense="true">
+                        Maskinen har ikke en gyldig status for offboarding i PureService. Offboarding kan ikke startes.
+                    </MudAlert>
+                }
+            </MudStack>
+        }
+        else
+        {
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.body1">
+                    Dette er <b>irreversibelt</b> og vil påvirke enheten i flere systemer.
+                </MudText>
+                <MudAlert Severity="Severity.Warning" Dense="true">
+                    Sørg for at enheten er online og aktiv i Intune før du fortsetter.
+                </MudAlert>
+
+                @if (IsAssetSold)
+                {
+                    <MudText Typo="Typo.body2"><b>Rutine:</b> Privatisering</MudText>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2"><b>Rutine:</b> Sletting</MudText>
+                }
+
+                <MudRadioGroup @bind-Value="_selectedMethod">
+                    <MudStack Spacing="3">
+                        <MudRadio Value="OffboardingMethod.RemoveAutopilot" Color="Color.Default">
+                            <MudStack Spacing="0">
+                                <MudText Typo="Typo.body1"><b>Fjern fra Autopilot</b></MudText>
+                                <MudText Typo="Typo.body2">Fjerner fra Autopilot, oppdaterer Defender og PureService. Bruker resetter selv via firmaportal.</MudText>
+                            </MudStack>
+                        </MudRadio>
+                        <MudRadio Value="OffboardingMethod.WithWipe" Color="Color.Error">
+                            <MudStack Spacing="0">
+                                <MudText Typo="Typo.body1"><b>Wipe enhet</b></MudText>
+                                <MudText Typo="Typo.body2">Sender wipe-kommando og fjerner enheten fra Intune og Entra. Enheten nullstilles av IT.</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Warning">Ha firmaportal åpen på enheten for raskest mulig respons.</MudText>
+                            </MudStack>
+                        </MudRadio>
+                    </MudStack>
+                </MudRadioGroup>
+            </MudStack>
+        }
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="@(() => MudDialog.Close(DialogResult.Cancel()))"
-                   Variant="Variant.Text">
-            Avbryt
-        </MudButton>
-        <MudButton OnClick="@(() => MudDialog.Close(DialogResult.Ok(_selectedType)))"
-                   Color="Color.Error"
-                   Variant="Variant.Filled"
-                   Disabled="@(_selectedType == OffboardingType.None)">
-            Start offboarding
-        </MudButton>
+        @if (!CanOffboard)
+        {
+            <MudButton OnClick="@(() => MudDialog.Close(DialogResult.Cancel()))"
+                       Variant="Variant.Filled">
+                Lukk
+            </MudButton>
+        }
+        else
+        {
+            <MudButton OnClick="@(() => MudDialog.Close(DialogResult.Cancel()))"
+                       Variant="Variant.Text">
+                Avbryt
+            </MudButton>
+            <MudButton OnClick="@(() => MudDialog.Close(DialogResult.Ok(new OffboardingSelection(Routine, _selectedMethod))))"
+                       Color="Color.Error"
+                       Variant="Variant.Filled"
+                       Disabled="@(_selectedMethod == OffboardingMethod.None)">
+                @(IsAssetSold ? "Start privatisering" : "Start offboarding")
+            </MudButton>
+        }
     </DialogActions>
 </MudDialog>
 
-@code 
+@code
 {
     [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
-    private OffboardingType _selectedType = OffboardingType.None;
+    [Parameter] public bool IsAssetSold { get; set; }
+    [Parameter] public bool IsOffboardable { get; set; }
+    [Parameter] public bool HasPureserviceTicket { get; set; }
+
+    private bool CanOffboard => (IsAssetSold && HasPureserviceTicket) || IsOffboardable;
+    private OffboardingRoutine Routine => IsAssetSold ? OffboardingRoutine.Privatization : OffboardingRoutine.Deletion;
+    private OffboardingMethod _selectedMethod = OffboardingMethod.None;
+
+    private string GetTitle() => CanOffboard
+    ? (IsAssetSold ? "Start privatisering" : "Start offboarding")
+    : (IsAssetSold ? "Privatisering blokkert" : "Offboarding blokkert");
 }

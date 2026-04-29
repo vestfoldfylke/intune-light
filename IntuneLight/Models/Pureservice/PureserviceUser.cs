@@ -10,13 +10,13 @@ public sealed class PureserviceUserSearchResponse
 public sealed class PureserviceUser
 {
     public int Id { get; set; }
-    public string FullName { get; set; } = string.Empty;
-    public string Title { get; set; } = string.Empty;
-    public string Location { get; set; } = string.Empty;
-    public string Department { get; set; } = string.Empty;
+    public string? FullName { get; set; } = string.Empty;
+    public string? Title { get; set; } = string.Empty;
+    public string? Location { get; set; } = string.Empty;
+    public string? Department { get; set; } = string.Empty;
     public bool IsSuperuser { get; set; }
-    public DateTime Created { get; set; }
-    public DateTime Modified { get; set; }
+    public DateTime? Created { get; set; }
+    public DateTime? Modified { get; set; }
     public int? CompanyDepartmentId { get; set; }
 
     // Raw JSON payload for troubleshooting / raw viewer

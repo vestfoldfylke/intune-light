@@ -239,8 +239,7 @@ public class ApiResponseGuard(
                 [SystemNames.IntuneLaps]                     = "intune_laps",
                 [SystemNames.IntuneBitlocker]                = "intune_bitlocker",
                 [SystemNames.DefenderTag]                    = "defender_tag",
-                [SystemNames.PureserviceOffboardingTicket]   = "pureservice_offboarding_ticket",
-                [SystemNames.PureserviceAssetStatus]         = "pureservice_asset_status"
+                [SystemNames.PureserviceOffboardingTicket]   = "pureservice_offboarding_ticket"
 
             }.ToFrozenDictionary();
 

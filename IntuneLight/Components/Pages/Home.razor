@@ -93,14 +93,9 @@
                                 }
 
                                 @if ((step.Status == OffboardingStepStatus.Running || step.Status == OffboardingStepStatus.Success)
-                                     && _stepSeconds.TryGetValue(step.StepName, out var secs)
-                                     && step.StepName != "Henter LAPS-passord")
+                                     && _stepSeconds.TryGetValue(step.StepName, out var secs))
                                 {
                                     <MudText Typo="Typo.body2" Color="Color.Default">@FormatSeconds(secs)</MudText>
-                                }
-                                else if (step.StepName == "Henter LAPS-passord" && !string.IsNullOrWhiteSpace(_lapsPassword))
-                                {
-                                    <MudText Typo="Typo.body2" Color="Color.Default">@_lapsPassword</MudText>
                                 }
                                 else if (!string.IsNullOrWhiteSpace(step.Message))
                                 {
@@ -451,7 +446,7 @@
                             <MudStack Spacing="2">
 
                                 <MudStack Row AlignItems="AlignItems.Center" Class="device-card-topbar">
-                                    <MudImage Width="30" Src="/img/entra.png" ObjectFit="ObjectFit.ScaleDown" />
+                                    <MudImage Width="30" Src="/img/laptop1.png" ObjectFit="ObjectFit.ScaleDown" />
                                     <MudText Typo="Typo.subtitle1">Entra ID</MudText>
                                     <MudSpacer />
                                     @if (_state.EntraDevice is not null)
@@ -943,11 +938,13 @@
                                             </MudText>
                                         </MudItem>
                                         <MudItem xs="4">
-                                            <MudText Typo="Typo.body2"><b>Navn:</b></MudText>
+                                            <MudText Typo="Typo.body2"><b>Status:</b></MudText>
                                         </MudItem>
                                         <MudItem xs="8">
                                             <MudText Typo="Typo.body2">
-                                                @UiFormat.TextOrFallback(_state.PureserviceAssetBySn.Name, "ukjent")
+                                                @UiFormat.TextOrFallback(
+                                                _state.AssetStatuses?.FirstOrDefault(s => s.Id == _state.PureserviceAssetBySn.StatusId)?.Name,
+                                                "Ukjent")
                                             </MudText>
                                         </MudItem>
                                         <MudItem xs="4">
@@ -1287,10 +1284,10 @@
 
                                     <MudStack Row AlignItems="AlignItems.Center" Class="device-card-topbar">
                                         <MudIcon Icon="@Icons.Material.Outlined.Logout" Color="Color.Error" Size="Size.Large" />
-                                        <MudText Typo="Typo.subtitle1">Offboarding</MudText>
+                                        <MudText Typo="Typo.subtitle1">@(_state.AssetStatuses?.Any(s => s.Name == PureserviceNames.AssetStatusSold && s.Id == _state.PureserviceAssetBySn?.StatusId) == true ? "Privatisering" : "Offboarding")</MudText>
                                         <MudSpacer />
                                         <MudMenu Icon="@Icons.Material.Outlined.Settings" Class="pa-0" Dense=true AnchorOrigin="Origin.CenterLeft" TransformOrigin="Origin.CenterRight">
-                                            <MudMenuItem Label="Start offboarding" OnClick="StartOffboardingAsync" Disabled="@_isOffboarding" />
+                                            <MudMenuItem Label="@(_state.AssetStatuses?.Any(s => s.Name == PureserviceNames.AssetStatusSold && s.Id == _state.PureserviceAssetBySn?.StatusId) == true ? "Start privatisering" : "Start offboarding")" OnClick="StartOffboardingAsync" Disabled="@_isOffboarding" />
                                         </MudMenu>
                                     </MudStack>
 
@@ -1298,7 +1295,9 @@
 
                                     <div style="display:flex; align-items:center; height:100%">
                                         <MudText Typo="Typo.body2">
-                                            Privatisering av enhet. Fjerner enheten fra alle systemer og oppretter sak i Pureservice.
+                                            @(_state.AssetStatuses?.Any(s => s.Name == PureserviceNames.AssetStatusSold && s.Id == _state.PureserviceAssetBySn?.StatusId) == true
+                                                ? "Privatisering av enhet. Fjerner enheten fra alle systemer og oppretter sak i Pureservice."
+                                                : "Offboarding av enhet. Fjerner enheten fra alle systemer og oppretter sak i Pureservice.")
                                         </MudText>
                                     </div>
 
@@ -1423,9 +1422,10 @@
                 // Fetch pureservice asset by serial number, then by id for full details
                 results.PureserviceAssetBySn = await _pureserviceService.GetAssetBySerialAsync(results.ManagedDevice.SerialNumber);
 
-                // Fetch pureservice asset relationships by asset id
+                // If we found an asset by serial number, fetch its status types and relationships.
                 if (results.PureserviceAssetBySn is not null)
                 {
+                    results.AssetStatuses = await _pureserviceService.GetAssetStatusTypesAsync(results.PureserviceAssetBySn.TypeId);
                     results.PureserviceRelationships = await _pureserviceService.GetRelationshipsByAssetIdAsync(results.PureserviceAssetBySn.Id.ToString());
                 }
 
@@ -1434,10 +1434,17 @@
                 {
                     if (results.PureserviceRelationships.Relationships != null)
                     {
-                        // Finn første ticket-relasjon
-                        var ticketRel = results.PureserviceRelationships.Relationships.FirstOrDefault(r => r.ToTicketId.HasValue);
-                        var ticket = results.PureserviceRelationships.Linked.Tickets.FirstOrDefault(t => t.Id == ticketRel?.ToTicketId);
-                        var user = results.PureserviceRelationships.Linked.Users.FirstOrDefault(); // eller match via links
+                        var ticketRel = results.PureserviceRelationships.Relationships
+                            .Where(r => r.ToTicketId.HasValue)
+                            .OrderByDescending(r => r.Created)
+                            .FirstOrDefault();
+
+                        var ticket = results.PureserviceRelationships.Linked.Tickets
+                            .Where(t => t.Id == ticketRel?.ToTicketId)
+                            .OrderByDescending(t => t.Created)
+                            .FirstOrDefault();
+
+                        var user = results.PureserviceRelationships.Linked.Users.FirstOrDefault();
 
                         if (ticket != null)
                         {

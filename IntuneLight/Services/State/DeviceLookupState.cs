@@ -110,6 +110,7 @@ public sealed class DeviceLookupState
     public string? ClientIpAddress { get; set; }
     public EntraDeviceCount?  EntraDeviceCount { get; set; }
     public HashSet<string> LapsRotationLockedDevices { get; } = [];
+    public List<PureserviceAssetStatus>? AssetStatuses { get; set; }
 
     #endregion
 
@@ -140,6 +141,7 @@ public sealed class DeviceLookupState
         EntraDeviceCount = null;
         IsSearchSerialTouched = false;
         HasSearched = false;
+        AssetStatuses = null;
         NotifyStateChanged();
     }
 
@@ -163,6 +165,7 @@ public sealed class DeviceLookupState
         UserDeviceCount = results.UserDeviceCount;
         IsIsolated = results.IsIsolated;
         EntraDeviceCount = results.EntraDeviceCount;
+        AssetStatuses = results.AssetStatuses;
         NotifyStateChanged();
     }
 

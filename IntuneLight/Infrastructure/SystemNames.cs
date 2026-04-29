@@ -7,7 +7,8 @@ public static class SystemNames
     public const string PureserviceDevice = "Pureservice | Resurs";
     public const string PureserviceRelationship = "Pureservice | Relasjon";
     public const string PureserviceOffboardingTicket = "Pureservice | Offboarding ticket";
-    public const string PureserviceAssetStatus = "Pureservice | Asset status";
+    public const string PureserviceAssetStatusTypes = "Pureservice | Asset status types";
+    public const string PureserviceConfigCache = "Pureservice | Config cache";
 
     public const string EntraDevice = "Entra | Enhet";
     public const string EntraDeviceDelete = "Entra | Slett enhet";
