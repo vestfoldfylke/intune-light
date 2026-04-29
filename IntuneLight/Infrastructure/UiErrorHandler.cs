@@ -54,7 +54,7 @@ public sealed class UiErrorHandler(IDialogService dialogs, ISnackbar snackbar, I
         _log.LogError(exception, "Unexpected error in UI flow.");
 
         // Display exception message to user
-        _snackbar.Add($"Uventet feil: {exception.Message}", Severity.Error, conf => conf.RequireInteraction = true);
+        _snackbar.Add("Uventet feil. Kontakt IT hvis problemet vedvarer.", Severity.Error, conf => conf.RequireInteraction = true);
     }
 
     private async Task ShowApiErrorDialogAsync(ApiErrorInfo error)

@@ -4,7 +4,9 @@ using IntuneLight.Infrastructure;
 using IntuneLight.Models.ApiError;
 using IntuneLight.Models.Defender;
 using IntuneLight.Models.Offboarding;
+using IntuneLight.Models.Pureservice;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Options;
 using MudBlazor;
 
 namespace IntuneLight.Components.Pages;
@@ -380,6 +382,9 @@ public partial class Home : ComponentBase
 
     #region Offboarding
 
+    // Offboarding options injected from configuration, containing settings like asset status IDs and feature flags.
+    [Inject] private IOptions<PureserviceOffboardingOptions> OffboardingOptions { get; set; } = default!;
+
     // Temporary storage for the LAPS password and BitLocker key during the offboarding process
     private string? _lapsPassword;
     private string? _bitlockerKey;
@@ -410,11 +415,37 @@ public partial class Home : ComponentBase
             MaxWidth = MaxWidth.Small,
             FullWidth = true,
             CloseButton = false,
-            BackdropClick = false
+            BackdropClick = false,
+            CloseOnEscapeKey = false
         };
 
-        // Show confirmation dialog with option to wipe or not.
-        var dialog = await _dialogService.ShowAsync<OffboardingConfirmDialog>("", options);
+        // Determine if the device is sold or offboardable based on its current status in Pureservice.
+        var currentStatusId = _state.PureserviceAssetBySn?.StatusId;
+        var soldStatus = _state.AssetStatuses?.FirstOrDefault(s => s.Name == PureserviceNames.AssetStatusSold);
+        var isSold = currentStatusId.HasValue && soldStatus?.Id == currentStatusId;
+
+        // Offboarding is allowed if the asset status is one of the defined offboarding statuses and matches the current status of the asset.
+        var offboardingNames = new[]
+        {
+            PureserviceNames.AssetStatusDiscarded,
+            PureserviceNames.AssetStatusShared,
+            PureserviceNames.AssetStatusLost,
+            PureserviceNames.AssetStatusStolen,
+            PureserviceNames.AssetStatusDiscardedRedistributed
+        };
+
+        // Check if the current asset status is in the list of offboarding statuses and matches the current status ID.
+        var isOffboardable = currentStatusId.HasValue && (_state.AssetStatuses?.Any(s =>
+            offboardingNames.Contains(s.Name) && s.Id == currentStatusId) ?? false);
+
+        var parameters = new DialogParameters
+        {
+            ["IsAssetSold"] = isSold,
+            ["IsOffboardable"] = isOffboardable,
+            ["HasPureserviceTicket"] = _state.PureserviceTicket is not null
+        };
+
+        var dialog = await _dialogService.ShowAsync<OffboardingConfirmDialog>("", parameters, options);
         var result = await dialog.Result;
 
         if (result is null || result.Canceled)
@@ -422,8 +453,10 @@ public partial class Home : ComponentBase
             return;
         }
 
-        var offboardingType = (OffboardingType)result.Data!;
-        var withWipe = offboardingType == OffboardingType.WithWipe;
+        // Extract the user's offboarding selections from the dialog result to determine which steps to perform.
+        var selection = (OffboardingSelection)result.Data!;
+        var withWipe = selection.Method == OffboardingMethod.WithWipe;
+        var isPrivatization = selection.Routine == OffboardingRoutine.Privatization;
 
         // Reset offboarding state and create cancellation token
         _offboardingCts = new CancellationTokenSource();
@@ -435,18 +468,18 @@ public partial class Home : ComponentBase
         _offboardingSteps = [
             new("Henter LAPS-passord", OffboardingStepStatus.Pending),
             new("Henter BitLocker-nøkkel", OffboardingStepStatus.Pending),
+            new("Oppretter sak i Pureservice", OffboardingStepStatus.Pending),
             new("Fjerner fra Autopilot", OffboardingStepStatus.Pending),
             new("Synkroniserer Intune", OffboardingStepStatus.Pending),
             new("Wiper enhet", OffboardingStepStatus.Pending),
             new("Fjerner fra Entra", OffboardingStepStatus.Pending),
             new("Fjerner fra Intune", OffboardingStepStatus.Pending),
-            new("Tagger i Defender", OffboardingStepStatus.Pending),
-            new("Oppretter sak i Pureservice", OffboardingStepStatus.Pending),
+            new("Tagger i Defender", OffboardingStepStatus.Pending)
         ];
 
         StateHasChanged();
 
-        // Step 0: Fetch LAPS password before offboarding
+        // Step 1: Fetch LAPS password before offboarding
         await RunOffboardingStepAsync("Henter LAPS-passord", async () =>
         {
             var credential = await _intuneService.GetLapsPasswordByAzureDeviceId(
@@ -458,7 +491,7 @@ public partial class Home : ComponentBase
             }
         }, ct);
 
-        // Step 1: Fetch BitLocker key before offboarding
+        // Step 2: Fetch BitLocker key before offboarding
         await RunOffboardingStepAsync("Henter BitLocker-nøkkel", async () =>
         {
             var key = await _intuneService.GetBitlockerRecoveryKeyByAzureAdDeviceIdAsync(
@@ -470,12 +503,49 @@ public partial class Home : ComponentBase
             }
         }, ct);
 
-        // Step 2: Remove from Autopilot - skip if already gone
+        // Step 3: Create ticket in Pureservice
+        if (_state.PureserviceAssetBySn is null)
+        {
+            UpdateStep("Oppretter sak i Pureservice", OffboardingStepStatus.Skipped, "Mangler asset i Pureservice");
+        }
+        else if (isPrivatization && _state.PureserviceUser is null)
+        {
+            UpdateStep("Oppretter sak i Pureservice", OffboardingStepStatus.Skipped, "Mangler bruker i Pureservice");
+        }
+        else
+        {
+            await RunOffboardingStepAsync("Oppretter sak i Pureservice", async () =>
+            {
+                var subject = isPrivatization ? "Privatisering av pc" : "Sletting av pc";
+
+                var description = $"""
+                    <p>Maskinen skal {(isPrivatization ? "privatiseres" : "slettes")}.</p>
+                    <p>Behandlet av: {UserCtx.Upn}</p>
+                    <p>LAPS-passord: {_lapsPassword ?? "ikke tilgjengelig"}</p>
+                    <p>BitLocker-nøkkel: {_bitlockerKey ?? "ikke tilgjengelig"}</p>
+                    """;
+
+                var effectiveUserId = isPrivatization
+                    ? _state.PureserviceUser!.Id
+                    : OffboardingOptions.Value.AgentId;
+
+                await _pureserviceService.CreateOffboardingTicketAsync(
+                    subject: subject,
+                    description: description,
+                    userId: effectiveUserId,
+                    assetId: _state.PureserviceAssetBySn.Id,
+                    routine: isPrivatization ? OffboardingRoutine.Privatization : OffboardingRoutine.Deletion,
+                    userUpn: _state.EntraUser?.UserPrincipalName);
+
+            }, ct);
+        }
+
+        // Step 4: Remove from Autopilot - skip if already gone
         if (_state.AutopilotDevice is null)
         {
             UpdateStep("Fjerner fra Autopilot", OffboardingStepStatus.Skipped, "Ikke funnet");
         }
-        else 
+        else
         {
             await RunOffboardingStepAsync("Fjerner fra Autopilot", async () =>
             {
@@ -486,17 +556,17 @@ public partial class Home : ComponentBase
                     return; // Already gone, skip silently
                 }
 
-                await _intuneService.DeleteAutopilotDeviceAsync(_state.AutopilotDevice.Id, 
+                await _intuneService.DeleteAutopilotDeviceAsync(_state.AutopilotDevice.Id,
                       _state.BuildAuditContext());
             }, ct);
         }
 
-        // Step 3: Sync Intune - wait until lastSyncDateTime changes (only with wipe)
+        // Step 5: Sync Intune - wait until lastSyncDateTime changes (only with wipe)
         if (!withWipe)
         {
             UpdateStep("Synkroniserer Intune", OffboardingStepStatus.Skipped, "Ikke valgt");
         }
-        else 
+        else
         {
             await RunOffboardingStepAsync("Synkroniserer Intune", async () =>
             {
@@ -516,7 +586,7 @@ public partial class Home : ComponentBase
             }, ct);
         }
 
-        // Step 4: Wipe - wait until wipe is pending/issued, then until device is gone (only with wipe)
+        // Step 6: Wipe - wait until wipe is pending/issued, then until device is gone (only with wipe)
         if (!withWipe)
         {
             UpdateStep("Wiper enhet", OffboardingStepStatus.Skipped, "Ikke valgt");
@@ -546,8 +616,8 @@ public partial class Home : ComponentBase
                     var device = await _intuneService.GetDeviceByIdAsync(_state.ManagedDevice.Id);
 
                     if (device is null || device.ManagementState == "wipePending")
-                    { 
-                        break; 
+                    {
+                        break;
                     }
 
                     if (device.ManagementState is "wipeFailed" or "wipeCanceled")
@@ -560,7 +630,7 @@ public partial class Home : ComponentBase
         }
 
 
-        // Step 5: Remove from Entra (only with wipe)
+        // Step 7: Remove from Entra (only with wipe)
         if (!withWipe)
         {
             UpdateStep("Fjerner fra Entra", OffboardingStepStatus.Skipped, "Ikke valgt");
@@ -571,14 +641,14 @@ public partial class Home : ComponentBase
         }
         else
         {
-            await RunOffboardingStepAsync("Fjerner fra Entra", async () => 
+            await RunOffboardingStepAsync("Fjerner fra Entra", async () =>
             {
                 await _entraDirectoryService.DeleteDeviceByAzureAdDeviceIdAsync(_state.ManagedDevice.AzureADDeviceId,
                       _state.BuildAuditContext());
             }, ct);
         }
 
-        // Step 6: Remove from Intune - skipped as device is automatically removed after wipe
+        // Step 8: Remove from Intune - skipped as device is automatically removed after wipe
         if (withWipe)
         {
             var wipeStep = _offboardingSteps.FirstOrDefault(s => s.StepName == "Wiper enhet");
@@ -587,41 +657,28 @@ public partial class Home : ComponentBase
             UpdateStep("Fjerner fra Intune",
                 wipeSuccess ? OffboardingStepStatus.Success : OffboardingStepStatus.Skipped,
                 ct.IsCancellationRequested ? "Avbrutt av bruker" :
-                wipeSuccess ? "Fjernet av wipe" : "Ikke utført");
+                wipeSuccess ? null : "Ikke utført");
         }
         else
         {
             UpdateStep("Fjerner fra Intune", OffboardingStepStatus.Skipped, "Ikke valgt");
         }
 
-        // Step 7: Tag Defender
+        // Step 9: Tag Defender
         if (_state.DefenderDevice is null)
         {
             UpdateStep("Tagger i Defender", OffboardingStepStatus.Skipped, "Ikke funnet");
         }
-        else 
+        else
         {
             await RunOffboardingStepAsync("Tagger i Defender", async () =>
             {
-                await _defenderService.AddMachineTagAsync(_state.DefenderDevice.Id, "Privatisert");
-                await _defenderService.AddMachineTagAsync(_state.DefenderDevice.Id, "Offboardet");
-            }, ct);
-        }
+                await _defenderService.AddMachineTagAsync(_state.DefenderDevice.Id, DefenderTags.Offboarded);
 
-        // Step 8: Create ticket in Pureservice
-        if (_state.PureserviceAssetBySn is null || _state.PureserviceUser is null)
-        {
-            UpdateStep("Oppretter sak i Pureservice", OffboardingStepStatus.Skipped, "Mangler asset eller bruker i Pureservice");
-        }
-        else
-        {
-            await RunOffboardingStepAsync("Oppretter sak i Pureservice", async () =>
-            {
-                await _pureserviceService.CreateOffboardingTicketAsync(
-                    subject: "Privatisering av pc",
-                    description: $"<p>Maskinen skal privatiseres.</p><p>Behandlet av: {UserCtx.Upn}</p><p>LAPS-passord: {_lapsPassword ?? "ikke tilgjengelig"}</p><p>BitLocker-nøkkel: {_bitlockerKey ?? "ikke tilgjengelig"}</p>",
-                    userId: _state.PureserviceUser.Id,
-                    assetId: _state.PureserviceAssetBySn.Id);
+                if (isPrivatization)
+                {
+                    await _defenderService.AddMachineTagAsync(_state.DefenderDevice.Id, DefenderTags.Privatized);
+                }
             }, ct);
         }
 
@@ -717,6 +774,7 @@ public partial class Home : ComponentBase
     {
         _offboardingSteps = [];
         _lapsPassword = null;
+        _bitlockerKey = null;
         _stepSeconds = [];
         _state.ClearResults();
         StateHasChanged();

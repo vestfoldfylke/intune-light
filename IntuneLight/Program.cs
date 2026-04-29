@@ -105,6 +105,7 @@ builder.Services.AddScoped<IIntuneService, IntuneService>();
 builder.Services.AddScoped<IDefenderService, DefenderService>();
 builder.Services.AddScoped<IEntraDirectoryService, EntraDirectoryService>();
 builder.Services.AddScoped<IPureserviceService, PureserviceService>();
+builder.Services.AddSingleton<PureserviceConfigCache>();
 
 // Register ApiResponseGuard, centralized API error handling
 builder.Services.AddScoped<IApiResponseGuard, ApiResponseGuard>();

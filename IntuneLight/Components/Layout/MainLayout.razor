@@ -67,7 +67,7 @@
 
 	#region Initialization
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
 		// Subscribe to state changes
         _state.StateChanged += StateHasChanged;
@@ -78,8 +78,11 @@
 
 		// Set pureservice ticket url from options
 		_state.PureserviceTicketAddress = _psOptions.Value.TicketAddress;
-        
-        base.OnInitialized();
+
+        // Ensure pureservice cache is populated on app startup.
+        await _pureserviceService.EnsureConfigCacheAsync();
+
+        await base.OnInitializedAsync();
     }
 
     #endregion

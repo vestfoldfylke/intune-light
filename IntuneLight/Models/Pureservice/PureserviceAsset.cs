@@ -21,7 +21,7 @@ public sealed class PureserviceAsset
     public int Id { get; set; }
     public DateTime? Created { get; set; }
     public DateTime? Modified { get; set; }
-    public int CreatedById { get; set; }
+    public int? CreatedById { get; set; }
     public int? ModifiedById { get; set; }
 
     // Raw JSON payload for debugging / raw viewer

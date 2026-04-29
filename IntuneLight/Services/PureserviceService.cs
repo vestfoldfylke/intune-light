@@ -1,9 +1,12 @@
 ﻿using IntuneLight.Infrastructure;
+using IntuneLight.Models.Offboarding;
 using IntuneLight.Models.Pureservice;
+using IntuneLight.Security;
 using Microsoft.Extensions.Options;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace IntuneLight.Services;
 
@@ -13,9 +16,10 @@ public interface IPureserviceService
     Task<PureserviceTicket?> GetTicketByRequestNumberAsync(string requestNumber);
     Task<PureserviceAsset?> GetAssetBySerialAsync(string serialNumber);
     Task<PureserviceRelationshipSearchResponse?> GetRelationshipsByAssetIdAsync(string assetId);
-    Task UpdateAssetStatusAsync(string assetId, int typeId);
-    Task<PureserviceTicket?> CreateOffboardingTicketAsync(string subject, string description, int userId, int assetId);
+    Task<PureserviceTicket?> CreateOffboardingTicketAsync(string subject, string description, int userId, int assetId, OffboardingRoutine routine, string? userUpn);
     Task<string?> GetAssetTypeClassNameAsync(int typeId);
+    Task<List<PureserviceAssetStatus>> GetAssetStatusTypesAsync(int assetTypeId);
+    Task EnsureConfigCacheAsync();
 }
 
 public sealed class PureserviceService
@@ -23,13 +27,17 @@ public sealed class PureserviceService
     IHttpClientFactory httpClientFactory, 
     ITokenService tokenService, 
     IApiResponseGuard guard,
-    IOptions<PureserviceOffboardingOptions> offboardingOptions) : IPureserviceService
+    IOptions<PureserviceOffboardingOptions> offboardingOptions,
+    PureserviceConfigCache pureserviceConfigCache,
+    UserContext userContext) : IPureserviceService
 {
     // Dependencies
     private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
     private readonly ITokenService _tokenService = tokenService;
     private readonly IApiResponseGuard _guard = guard;
+    private readonly PureserviceConfigCache _configCache = pureserviceConfigCache;
     private readonly PureserviceOffboardingOptions _offboardingOptions = offboardingOptions.Value;
+    private readonly UserContext _userContext = userContext;
 
     // JSON serializer options
     private readonly JsonSerializerOptions _jsonSerializerOptions = new() { PropertyNameCaseInsensitive = true };
@@ -165,10 +173,8 @@ public sealed class PureserviceService
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.api+json"));
 
         // Build request URL with filter for serial number
-        const int limit = 5;
-        //var encodedQuery = Uri.EscapeDataString(serialNumber);
-        var encodedQuery = Uri.EscapeDataString($"\"{serialNumber}\"");
-        var searchUrl = $"asset/search?query={encodedQuery}&limit={limit}";
+        var filter = Uri.EscapeDataString($"uniqueId == \"{serialNumber}\"");
+        var searchUrl = $"asset/?filter={filter}";
 
         // Search asset by serial number(minimal response)
         var searchResponse = await client.GetAsync(searchUrl);
@@ -331,18 +337,50 @@ public sealed class PureserviceService
                       .GetString();
     }
 
-    #endregion
-
-    #region Put requests
-    // Updates the status of a Pureservice asset to "Sold" by asset id.
-    public async Task UpdateAssetStatusAsync(string assetId, int typeId)
+    // Fetches all asset status types for a given asset type ID.
+    public async Task<List<PureserviceAssetStatus>> GetAssetStatusTypesAsync(int assetTypeId)
     {
-        // Validate input
-        UiValidation.RequireNotNullOrWhiteSpace(
-            assetId,
-            nameof(assetId),
-            systemName: SystemNames.PureserviceAssetStatus,
-            userMessage: "Resurs-id kan ikke være tomt.");
+        // Create named HTTP client
+        var client = _httpClientFactory.CreateClient("Pureservice");
+
+        // Set headers and fetch api key
+        var apiKey = await _tokenService.GetPureserviceTokenAsync();
+        client.DefaultRequestHeaders.Remove("X-Authorization-Key");
+        client.DefaultRequestHeaders.Add("X-Authorization-Key", apiKey);
+        client.DefaultRequestHeaders.Accept.Clear();
+        client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.api+json"));
+
+        // Build request URL
+        var url = $"assettype/{assetTypeId}?include=statuses";
+
+        // Send GET request
+        var response = await client.GetAsync(url);
+        var content = await response.Content.ReadAsStringAsync();
+
+        // Ensure success or treat no-data as valid
+        if (!_guard.EnsureSuccessOrNoData(response, SystemNames.PureserviceAssetStatusTypes, url, content))
+        {
+            return [];
+        }
+
+        // Ensure JSON body
+        if (!_guard.EnsureJsonBody(content, SystemNames.PureserviceAssetStatusTypes, url, (int)response.StatusCode))
+        {
+            return [];
+        }
+
+        // Deserialize and return statuses
+        var payload = JsonSerializer.Deserialize<PureserviceAssetTypeResponse>(content, _jsonSerializerOptions);
+        return payload?.Linked?.AssetStatuses ?? [];
+    }
+
+    // Ensures all static PureService configuration data is cached. Fetches from API if not already cached.
+    public async Task EnsureConfigCacheAsync()
+    {
+        if (_configCache.TicketStatuses.Count > 0)
+        {
+            return;
+        }
 
         // Create named HTTP client
         var client = _httpClientFactory.CreateClient("Pureservice");
@@ -354,55 +392,53 @@ public sealed class PureserviceService
         client.DefaultRequestHeaders.Accept.Clear();
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.api+json"));
 
-        // Fetch current asset to get full payload for update
-        var getUrl = $"asset/{Uri.EscapeDataString(assetId)}";
-        var getResponse = await client.GetAsync(getUrl);
-        var getContent = await getResponse.Content.ReadAsStringAsync();
+        // Fetch all static config data in parallel
+        var responses = await Task.WhenAll(
+            client.GetAsync("status/"),
+            client.GetAsync("tickettype/"),
+            client.GetAsync("priority/"),
+            client.GetAsync("source/"),
+            client.GetAsync("requesttype/"),
+            client.GetAsync("category/"),
+            client.GetAsync("relationshiptype/"));
 
-        // Ensure success or treat no-data as valid
-        if (!_guard.EnsureSuccessOrNoData(getResponse, SystemNames.PureserviceAssetStatus, getUrl, getContent))
-        {
-            throw new InvalidOperationException("Kunne ikke hente asset for oppdatering.");
-        }
+        var contents = await Task.WhenAll(responses.Select(r => r.Content.ReadAsStringAsync()));
 
-        // Fetch asset type class name required as root key in PUT payload
-        var className = await GetAssetTypeClassNameAsync(typeId);
-        if (string.IsNullOrWhiteSpace(className))
-        {
-            throw new InvalidOperationException($"Kunne ikke hente asset type klassenavn for typeId {typeId}.");
-        }
+        // Deserialize and cache each response
+        _configCache.TicketStatuses = DeserializeCacheResponse<PureserviceTicketStatusSearchResponse, PureserviceTicketStatus>(
+            responses[0], contents[0], "status/", r => r.Statuses);
 
-        // Parse asset and update only the status link
-        var doc = JsonDocument.Parse(getContent);
-        var assetElement = doc.RootElement.GetProperty("assets").EnumerateArray().First();
-        var assetDict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(assetElement.GetRawText())!;
-        var linksDict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(assetDict["links"].GetRawText())!;
+        _configCache.TicketTypes = DeserializeCacheResponse<PureserviceTicketTypeSearchResponse, PureserviceTicketType>(
+            responses[1], contents[1], "tickettype/", r => r.TicketTypes);
 
-        // Replace status with sold status id from options
-        linksDict["status"] = JsonSerializer.SerializeToElement(new { id = _offboardingOptions.AssetStatusSoldId });
-        assetDict["links"] = JsonSerializer.SerializeToElement(linksDict);
+        _configCache.Priorities = DeserializeCacheResponse<PureservicePrioritySearchResponse, PureservicePriority>(
+            responses[2], contents[2], "priority/", r => r.Priorities);
 
-        // Build payload with asset type class name as root key
-        var payload = new Dictionary<string, object>
-        {
-            [className] = new[] { assetDict }
-        };
+        _configCache.Sources = DeserializeCacheResponse<PureserviceSourceSearchResponse, PureserviceSource>(
+            responses[3], contents[3], "source/", r => r.Sources);
 
-        // Serialize payload to JSON
-        var json = JsonSerializer.Serialize(payload, _jsonSerializerOptions);
-        using var httpContent = new StringContent(json, Encoding.UTF8, "application/vnd.api+json");
+        _configCache.RequestTypes = DeserializeCacheResponse<PureserviceRequestTypeSearchResponse, PureserviceRequestType>(
+            responses[4], contents[4], "requesttype/", r => r.RequestTypes);
 
-        // Send the PUT request
-        var putUrl = $"asset/{Uri.EscapeDataString(assetId)}";
-        var response = await client.PutAsync(putUrl, httpContent);
-        var content = await response.Content.ReadAsStringAsync();
+        _configCache.Categories = DeserializeCacheResponse<PureserviceCategorySearchResponse, PureserviceCategory>(
+            responses[5], contents[5], "category/", r => r.Categories);
 
-        // Ensure success
-        _guard.EnsureSuccess(response, SystemNames.PureserviceAssetStatus, putUrl, content);
+        _configCache.RelationshipTypes = DeserializeCacheResponse<PureserviceRelationshipTypeSearchResponse, PureserviceRelationshipType>(
+            responses[6], contents[6], "relationshiptype/", r => r.RelationshipTypes);
     }
 
-    // Creates a new offboarding ticket in Pureservice, links it to the given asset, and assigns it to the given agent.
-    public async Task<PureserviceTicket?> CreateOffboardingTicketAsync(string subject, string description, int userId, int assetId)
+    #endregion
+
+    #region Put requests
+
+    // Creates a new offboarding ticket in PureService, links it to the given asset, and assigns it to the service agent.
+    public async Task<PureserviceTicket?> CreateOffboardingTicketAsync(
+        string subject,
+        string description,
+        int userId,
+        int assetId,
+        OffboardingRoutine routine,
+        string? userUpn)
     {
         // Validate input
         UiValidation.RequireNotNullOrWhiteSpace(
@@ -411,6 +447,43 @@ public sealed class PureserviceService
             systemName: SystemNames.PureserviceOffboardingTicket,
             userMessage: "Emne kan ikke være tomt.");
 
+        // Ensure config cache is populated
+        await EnsureConfigCacheAsync();
+
+        // Validate resolved status
+        var resolvedStatus = _configCache.TicketStatuses.FirstOrDefault(s => s.Name == PureserviceNames.TicketStatusResolved);
+        UiValidation.RequireNotNull(
+            resolvedStatus,
+            nameof(resolvedStatus),
+            systemName: SystemNames.PureserviceOffboardingTicket,
+            userMessage: $"Finner ikke status '{PureserviceNames.TicketStatusResolved}' i PureService. Kontakt administrator.");
+
+        // Resolve ticket field values from config cache
+        var ticketTypeId = _configCache.TicketTypes.FirstOrDefault(t => t.Name == PureserviceNames.TicketTypeName)?.Id ?? 0;
+        var priorityId = _configCache.Priorities.FirstOrDefault(p => p.Name == PureserviceNames.PriorityName && p.RequestTypeId == 1)?.Id ?? 0;
+        var sourceId = _configCache.Sources.FirstOrDefault(s => s.Name == PureserviceNames.SourceName)?.Id ?? 0;
+        var category1Id = _configCache.Categories.FirstOrDefault(c => c.Name == PureserviceNames.Category1Name)?.Id ?? 17; // Fallback used in dev — "Klient" (id 17) substitutes for "Maskinvare"
+        var category2Id = _configCache.Categories.FirstOrDefault(c => c.Name == PureserviceNames.Category2Name)?.Id ?? 2;  // Fallback used in dev — "PC" exists in both environments
+        var category3Id = _configCache.Categories.FirstOrDefault(c => c.Name == PureserviceNames.Category3Name)?.Id ?? 22; // Fallback used in dev — "Privatisering" (id 22)
+        var requestTypeId = _configCache.RequestTypes.FirstOrDefault(r => r.Key == PureserviceNames.RequestTypeName)?.Id ?? 0;
+
+        var isStudent = userUpn?.Contains(OrganizationConstants.StudentEmailDomain) == true;
+
+        var relationshipTypeName = routine == OffboardingRoutine.Privatization
+            ? (isStudent ? PureserviceNames.RelationshipTypePrivatizationStudent : PureserviceNames.RelationshipTypePrivatizationEmployee)
+            : PureserviceNames.RelationshipTypeDeletion;
+
+        var relationshipTypeId = _configCache.RelationshipTypes
+            .FirstOrDefault(r => r.Name == relationshipTypeName)?.Id ?? 0;
+
+        // Validate resolved field values
+        if (relationshipTypeId == 0)
+        {
+            throw new UiValidationException(
+                systemName: SystemNames.PureserviceOffboardingTicket,
+                message: $"Finner ikke relasjonstype '{relationshipTypeName}' i PureService. Kontakt administrator.");
+        }
+
         // Create named HTTP client
         var client = _httpClientFactory.CreateClient("Pureservice");
 
@@ -421,12 +494,9 @@ public sealed class PureserviceService
         client.DefaultRequestHeaders.Accept.Clear();
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.api+json"));
 
-        var temporaryId = $"relationship-{Guid.NewGuid()}";
+        var tempId = $"relationship-{Guid.NewGuid()}";
 
-        // Build request URL
-        var postUrl = "ticket/";
-
-        // Build ticket payload based on Pureservice API documentation
+        // Build ticket payload
         var payload = new
         {
             tickets = new[]
@@ -437,20 +507,21 @@ public sealed class PureserviceService
                     description,
                     origin = 1,
                     isMarkedForDeletion = false,
-                    visibility = 2, // 0 = Visible, 2 = Not Visible
-                    solution = "<p>Saken er håndtert automatisk av IntuneLight.</p>",
+                    visibility = 2,
+                    solution = "<p>Saken er håndtert automatisk av Intune Light.</p>",
                     links = new
                     {
-                        user = new { id = userId },
-                        ticketType = new { id = _offboardingOptions.TicketTypeId },
-                        priority = new { id = _offboardingOptions.PriorityId },
-                        status = new { id = _offboardingOptions.StatusId },
-                        source = new { id = _offboardingOptions.SourceId },
+                        user               = new { id = userId },
+                        ticketType         = new { id = ticketTypeId },
+                        priority           = new { id = priorityId },
+                        status             = new { id = resolvedStatus!.Id },
+                        source             = new { id = sourceId },
                         assignedDepartment = new { id = _offboardingOptions.DepartmentId },
-                        category1 = new { id = _offboardingOptions.Category1Id },
-                        category2 = new { id = _offboardingOptions.Category2Id },
-                        requestType = new { id = _offboardingOptions.RequestTypeId },
-                        relationships = new[] { new { temporaryId, type = "relationship" } }
+                        category1          = new { id = category1Id },
+                        category2          = new { id = category2Id },
+                        category3          = new { id = category3Id },
+                        requestType        = new { id = requestTypeId },
+                        relationships      = new[] { new { temporaryId = tempId, type = "relationship" } }
                     }
                 }
             },
@@ -460,31 +531,30 @@ public sealed class PureserviceService
                 {
                     new
                     {
-                        toAssetId = assetId,
-                        main = "ToAssetId",
-                        inverseMain = "FromAssetId",
+                        toAssetId           = assetId,
+                        main                = "ToAssetId",
+                        inverseMain         = "FromAssetId",
                         solvingRelationship = false,
                         links = new
                         {
-                            type = new { id = _offboardingOptions.RelationshipTypeId },
+                            type    = new { id = relationshipTypeId },
                             toAsset = new { id = assetId }
                         },
-                        temporaryId
+                        temporaryId = tempId
                     }
                 }
             }
         };
 
-        // Serialize payload to JSON
+        // Serialize and send POST request
         var json = JsonSerializer.Serialize(payload, _jsonSerializerOptions);
         using var httpContent = new StringContent(json, Encoding.UTF8, "application/vnd.api+json");
 
-        // Send the POST request to create the ticket
-        var response = await client.PostAsync(postUrl, httpContent);
+        var response = await client.PostAsync("ticket/", httpContent);
         var content = await response.Content.ReadAsStringAsync();
 
         // Ensure success
-        _guard.EnsureSuccess(response, SystemNames.PureserviceOffboardingTicket, postUrl, content);
+        _guard.EnsureSuccess(response, SystemNames.PureserviceOffboardingTicket, "ticket/", content);
 
         // Deserialize created ticket
         var result = JsonSerializer.Deserialize<PureserviceTicketSearchResponse>(content, _jsonSerializerOptions);
@@ -495,7 +565,7 @@ public sealed class PureserviceService
             return null;
         }
 
-        // Fetch the full ticket to get all fields needed for PUT
+        // Fetch full ticket for PUT
         var getUrl = $"ticket/{ticket.Id}";
         var getResponse = await client.GetAsync(getUrl);
         var getContent = await getResponse.Content.ReadAsStringAsync();
@@ -505,35 +575,66 @@ public sealed class PureserviceService
             return ticket;
         }
 
-        // Parse ticket and update assignedAgent
-        var doc = JsonDocument.Parse(getContent);
-        var ticketElement = doc.RootElement.GetProperty("tickets").EnumerateArray().First();
-        var ticketDict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(ticketElement.GetRawText())!;
-        var linksDict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(ticketDict["links"].GetRawText())!;
+        // Deserialize and set assignedAgentId directly on flat object
+        var ticketObj = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(
+            JsonDocument.Parse(getContent).RootElement.GetProperty("tickets").EnumerateArray().First().GetRawText())!;
 
-        // Set assigned agent
-        linksDict["assignedAgent"] = JsonSerializer.SerializeToElement(new { id = _offboardingOptions.AgentId.ToString(), type = "user" });
-        ticketDict["links"] = JsonSerializer.SerializeToElement(linksDict);
 
-        // Build PUT payload
-        var putPayload = new Dictionary<string, object>
+        // Try to lookup agent by upn
+        var agentId = _offboardingOptions.AgentId;
+        if (!string.IsNullOrWhiteSpace(_userContext.Upn))
         {
-            ["tickets"] = new[] { ticketDict }
-        };
+            var normalizedAgentEmail = NormalizeEmailForLookup(_userContext.Upn);
+            var pureserviceAgent = await GetUserByEmailAsync(normalizedAgentEmail);
+            if (pureserviceAgent is not null)
+            {
+                agentId = pureserviceAgent.Id;
+            }
+        }
 
-        // Serialize PUT payload
+        ticketObj["assignedAgentId"] = JsonSerializer.SerializeToElement(agentId);
+
+        var putPayload = new Dictionary<string, object> { ["tickets"] = new[] { ticketObj } };
         var putJson = JsonSerializer.Serialize(putPayload, _jsonSerializerOptions);
         using var putContent = new StringContent(putJson, Encoding.UTF8, "application/vnd.api+json");
 
-        // Send the PUT request to assign the agent
-        var putUrl = $"ticket/{ticket.Id}";
-        var putResponse = await client.PutAsync(putUrl, putContent);
+        var putResponse = await client.PutAsync($"ticket/{ticket.Id}", putContent);
         var putResponseContent = await putResponse.Content.ReadAsStringAsync();
 
-        // Ensure success
-        _guard.EnsureSuccess(putResponse, SystemNames.PureserviceOffboardingTicket, putUrl, putResponseContent);
+        _guard.EnsureSuccess(putResponse, SystemNames.PureserviceOffboardingTicket, $"ticket/{ticket.Id}", putResponseContent);
 
         return ticket;
+    }
+
+    #endregion
+
+    #region Helper methods
+
+    // Normalizes an email address by removing identifiers (.s. or .l.) for PureService lookup.
+    private static string NormalizeEmailForLookup(string email)
+    {
+        return Regex.Replace(email, @"\.[sSlL]\.", ".", RegexOptions.IgnoreCase);
+    }
+
+    // Deserializes a cached API response and returns the result, or an empty list if the response is invalid.
+    private List<T> DeserializeCacheResponse<TResponse, T>(
+        HttpResponseMessage response,
+        string content,
+        string url,
+        Func<TResponse, List<T>?> selector) where TResponse : class
+    {
+        if (!_guard.EnsureSuccessOrNoData(response, SystemNames.PureserviceConfigCache, url, content))
+        {
+            return [];
+        }
+
+        if (!_guard.EnsureJsonBody(content, SystemNames.PureserviceConfigCache, url, (int)response.StatusCode))
+        {
+            return [];
+        }
+
+        var payload = JsonSerializer.Deserialize<TResponse>(content, _jsonSerializerOptions);
+        return payload is null ? [] : selector(payload) ?? [];
     }
 
     #endregion

@@ -23,4 +23,5 @@ public sealed class DeviceLookupResults
     public int? UserDeviceCount { get; set; }
     public bool IsIsolated { get; set; }
     public EntraDeviceCount? EntraDeviceCount { get; set; }
+    public List<PureserviceAssetStatus>? AssetStatuses { get; set; }
 }

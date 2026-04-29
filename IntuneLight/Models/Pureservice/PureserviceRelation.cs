@@ -39,10 +39,10 @@ public sealed class PureserviceRelationship
     public int? FromUserId { get; set; }
     public int? ToCompanyId { get; set; }
     public int? FromCompanyId { get; set; }
-    public DateTimeOffset Created { get; set; }
-    public DateTimeOffset Modified { get; set; }
-    public int CreatedById { get; set; }
-    public int ModifiedById { get; set; }
+    public DateTimeOffset? Created { get; set; }
+    public DateTimeOffset? Modified { get; set; }
+    public int? CreatedById { get; set; }
+    public int? ModifiedById { get; set; }
     public PureserviceRelationshipLinks Links { get; set; } = new();
 }
 
@@ -79,8 +79,8 @@ public sealed class PureserviceRelationshipType
     public string? Name { get; set; }
     public string? ReverseName { get; set; }
     public bool Disabled { get; set; }
-    public int From { get; set; }
-    public int To { get; set; }
+    public int? From { get; set; }
+    public int? To { get; set; }
     public int? FromAssetTypeId { get; set; }
     public int? ToAssetTypeId { get; set; }
     public int? FromTicketTypeId { get; set; }
@@ -88,8 +88,8 @@ public sealed class PureserviceRelationshipType
     public int? FromChangeTypeId { get; set; }
     public int? ToChangeTypeId { get; set; }
     public int? RelationshipTypeGroupId { get; set; }
-    public DateTimeOffset Created { get; set; }
-    public DateTimeOffset Modified { get; set; }
-    public int CreatedById { get; set; }
-    public int ModifiedById { get; set; }
+    public DateTimeOffset? Created { get; set; }
+    public DateTimeOffset? Modified { get; set; }
+    public int? CreatedById { get; set; }
+    public int? ModifiedById { get; set; }
 }
