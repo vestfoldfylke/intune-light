@@ -1,13 +1,12 @@
 ﻿@using IntuneLight.Models.Offboarding
+@using IntuneLight.Models.Pureservice
 
 <MudDialog ActionsClass="pa-2">
     <TitleContent>
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
             <MudIcon Icon="@(CanOffboard ? Icons.Material.Outlined.Logout : Icons.Material.Outlined.AssignmentLate)"
                      Color="Color.Error" />
-            <MudText Typo="Typo.h6">
-                @GetTitle()
-            </MudText>
+            <MudText Typo="Typo.h6">@GetTitle()</MudText>
         </MudStack>
     </TitleContent>
     <DialogContent>
@@ -17,54 +16,100 @@
                 @if (!HasPureserviceTicket && IsAssetSold)
                 {
                     <MudAlert Severity="Severity.Warning" Dense="true">
-                        Sak må opprettes i PureService før privatisering kan kjøres.
+                        Maskinen må privatiseres i PureService før du kan fullføre privatiseringen i Intune Light.
                     </MudAlert>
                 }
                 else
                 {
-                    <MudAlert Severity="Severity.Warning" Dense="true">
-                        Maskinen har ikke en gyldig status for offboarding i PureService. Offboarding kan ikke startes.
+                    <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-5">
+                        Maskinen har ikke en gyldig status for offboarding i PureService.
                     </MudAlert>
+
+                    <MudStack Spacing="2">
+                        <MudText Typo="Typo.body2"><b>Gyldig status for privatisering:</b></MudText>
+                        <MudList T="string" Dense="true" Gutters="false" ReadOnly="true">
+                            <MudListItem Dense="true">• @PureserviceNames.AssetStatusSold</MudListItem>
+                        </MudList>
+                        <MudText Typo="Typo.body2"><b>Gyldig status for sletting:</b></MudText>
+                        <MudList T="string" Dense="true" Gutters="false" ReadOnly="true" >
+                            <MudListItem Dense="true">• @PureserviceNames.AssetStatusDiscarded</MudListItem>
+                            <MudListItem Dense="true">• @PureserviceNames.AssetStatusDiscardedRedistributed</MudListItem>
+                            <MudListItem Dense="true">• @PureserviceNames.AssetStatusShared</MudListItem>
+                            <MudListItem Dense="true">• @PureserviceNames.AssetStatusLost</MudListItem>
+                            <MudListItem Dense="true">• @PureserviceNames.AssetStatusStolen</MudListItem>
+                        </MudList>
+                    </MudStack>
                 }
             </MudStack>
         }
         else
         {
-            <MudStack Spacing="3">
-                <MudText Typo="Typo.body1">
-                    Dette er <b>irreversibelt</b> og vil påvirke enheten i flere systemer.
-                </MudText>
-                <MudAlert Severity="Severity.Warning" Dense="true">
-                    Sørg for at enheten er online og aktiv i Intune før du fortsetter.
-                </MudAlert>
+            <MudStack Spacing="4">
 
-                @if (IsAssetSold)
+                <MudText Typo="Typo.body2"><b>Rutine:</b> @(IsAssetSold ? "Privatisering" : "Sletting")</MudText>
+                @if (_selectedMethod == OffboardingMethod.RemoveAutopilot)
                 {
-                    <MudText Typo="Typo.body2"><b>Rutine:</b> Privatisering</MudText>
+                    <MudAlert Severity="Severity.Info" Dense="true">
+                        Bruker nullstiller selv via Firmaportal.
+                    </MudAlert>
                 }
-                else
+                else if (_selectedMethod == OffboardingMethod.WithWipe)
                 {
-                    <MudText Typo="Typo.body2"><b>Rutine:</b> Sletting</MudText>
+                    <MudAlert Severity="Severity.Warning" Dense="true">
+                        <b>All data på enheten blir slettet.</b> Sørg for at enheten er online og aktiv i Intune. Ha Firmaportal åpen for raskest respons.
+                    </MudAlert>
                 }
+                else if (_selectedMethod == OffboardingMethod.ForceDelete)
+                {
+                    <MudAlert Severity="Severity.Error" Dense="true">
+                        <b>Brukes kun når enheten er utilgjengelig eller ødelagt.</b> Enheten fjernes fra alle systemer uten å vente på respons.
+                    </MudAlert>
+                }
+                        
+                <MudTabs @bind-ActivePanelIndex="_selectedTabIndex" Rounded="true" Border="true" Color="Color.Default">
+                    @if (_state.AutopilotDevice is not null)
+                    {
+                        <MudTabPanel Text="Fjern fra Autopilot">
+                            <MudStack Spacing="2" Class="pa-3">
+                                <MudList T="string" Dense="true" Gutters="false" ReadOnly="true">
+                                    <MudListItem Dense="true">• Henter LAPS-passord og BitLocker-nøkkel</MudListItem>
+                                    <MudListItem Dense="true">• Oppretter sak i PureService</MudListItem>
+                                    <MudListItem Dense="true">• Fjerner fra Autopilot</MudListItem>
+                                    <MudListItem Dense="true">• Tagger i Defender</MudListItem>
+                                </MudList>
+                            </MudStack>
+                        </MudTabPanel>
+                    }
+                    <MudTabPanel Text="Wipe enhet">
+                        <MudStack Spacing="2" Class="pa-3">
+                            <MudList T="string" Dense="true" Gutters="false" ReadOnly="true">
+                                <MudListItem Dense="true">• Henter LAPS-passord og BitLocker-nøkkel</MudListItem>
+                                <MudListItem Dense="true">• Oppretter sak i PureService</MudListItem>
+                                <MudListItem Dense="true">• Fjerner fra Autopilot</MudListItem>
+                                <MudListItem Dense="true">• Synkroniserer og wiper enheten</MudListItem>
+                                <MudListItem Dense="true">• Fjerner fra Entra</MudListItem>
+                                <MudListItem Dense="true">• Tagger i Defender</MudListItem>
+                            </MudList>
+                        </MudStack>
+                    </MudTabPanel>
+                    <MudTabPanel Text="Tving sletting">
+                        <MudStack Spacing="2" Class="pa-3">
+                            <MudList T="string" Dense="true" Gutters="false" ReadOnly="true">
+                                <MudListItem Dense="true">• Oppretter sak i PureService</MudListItem>
+                                <MudListItem Dense="true">• Fjerner fra Autopilot</MudListItem>
+                                <MudListItem Dense="true">• Fjerner fra Entra</MudListItem>
+                                <MudListItem Dense="true">• Fjerner fra Intune</MudListItem>
+                                <MudListItem Dense="true">• Tagger i Defender</MudListItem>
+                            </MudList>
+                        </MudStack>
+                    </MudTabPanel>
+                </MudTabs>
 
-                <MudRadioGroup @bind-Value="_selectedMethod">
-                    <MudStack Spacing="3">
-                        <MudRadio Value="OffboardingMethod.RemoveAutopilot" Color="Color.Default">
-                            <MudStack Spacing="0">
-                                <MudText Typo="Typo.body1"><b>Fjern fra Autopilot</b></MudText>
-                                <MudText Typo="Typo.body2">Fjerner fra Autopilot, oppdaterer Defender og PureService. Bruker resetter selv via firmaportal.</MudText>
-                            </MudStack>
-                        </MudRadio>
-                        <MudRadio Value="OffboardingMethod.WithWipe" Color="Color.Error">
-                            <MudStack Spacing="0">
-                                <MudText Typo="Typo.body1"><b>Wipe enhet</b></MudText>
-                                <MudText Typo="Typo.body2">Sender wipe-kommando og fjerner enheten fra Intune og Entra. Enheten nullstilles av IT.</MudText>
-                                <MudText Typo="Typo.caption" Color="Color.Warning">Ha firmaportal åpen på enheten for raskest mulig respons.</MudText>
-                            </MudStack>
-                        </MudRadio>
-                    </MudStack>
-                </MudRadioGroup>
             </MudStack>
+
+            <MudCheckBox @bind-Value="_confirmed" Color="Color.Error">
+                Jeg bekrefter valget og er klar til å starte
+            </MudCheckBox>
         }
     </DialogContent>
     <DialogActions>
@@ -84,7 +129,7 @@
             <MudButton OnClick="@(() => MudDialog.Close(DialogResult.Ok(new OffboardingSelection(Routine, _selectedMethod))))"
                        Color="Color.Error"
                        Variant="Variant.Filled"
-                       Disabled="@(_selectedMethod == OffboardingMethod.None)">
+                       Disabled="@(!_confirmed)">
                 @(IsAssetSold ? "Start privatisering" : "Start offboarding")
             </MudButton>
         }
@@ -100,9 +145,26 @@
 
     private bool CanOffboard => (IsAssetSold && HasPureserviceTicket) || IsOffboardable;
     private OffboardingRoutine Routine => IsAssetSold ? OffboardingRoutine.Privatization : OffboardingRoutine.Deletion;
-    private OffboardingMethod _selectedMethod = OffboardingMethod.None;
+
+    // Default to "Fjern fra Autopilot" for offboarding, and "Wipe enhet" for privatisering, but allow user to change
+    private bool _confirmed;
+    private int _selectedTabIndex = -1;
+    private OffboardingMethod _selectedMethod => _state.AutopilotDevice is not null
+        ? _selectedTabIndex switch
+        {
+            0 => OffboardingMethod.RemoveAutopilot,
+            1 => OffboardingMethod.WithWipe,
+            2 => OffboardingMethod.ForceDelete,
+            _ => OffboardingMethod.None
+        }
+        : _selectedTabIndex switch
+        {
+            0 => OffboardingMethod.WithWipe,
+            1 => OffboardingMethod.ForceDelete,
+            _ => OffboardingMethod.None
+        };
 
     private string GetTitle() => CanOffboard
-    ? (IsAssetSold ? "Start privatisering" : "Start offboarding")
-    : (IsAssetSold ? "Privatisering blokkert" : "Offboarding blokkert");
+        ? (IsAssetSold ? "Start privatisering" : "Start offboarding")
+        : (IsAssetSold ? "Privatisering blokkert" : "Offboarding blokkert");
 }

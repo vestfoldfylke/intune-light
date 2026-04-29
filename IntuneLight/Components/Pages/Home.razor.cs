@@ -434,7 +434,7 @@ public partial class Home : ComponentBase
             PureserviceNames.AssetStatusDiscardedRedistributed
         };
 
-        // Check if the current asset status is in the list of offboarding statuses and matches the current status ID.
+        // Offboarding is allowed if the asset status is one of the defined offboarding statuses and matches the current status of the asset.
         var isOffboardable = currentStatusId.HasValue && (_state.AssetStatuses?.Any(s =>
             offboardingNames.Contains(s.Name) && s.Id == currentStatusId) ?? false);
 
@@ -456,6 +456,7 @@ public partial class Home : ComponentBase
         // Extract the user's offboarding selections from the dialog result to determine which steps to perform.
         var selection = (OffboardingSelection)result.Data!;
         var withWipe = selection.Method == OffboardingMethod.WithWipe;
+        var isForceDelete = selection.Method == OffboardingMethod.ForceDelete;
         var isPrivatization = selection.Routine == OffboardingRoutine.Privatization;
 
         // Reset offboarding state and create cancellation token
@@ -463,45 +464,63 @@ public partial class Home : ComponentBase
         var ct = _offboardingCts.Token;
         _isOffboarding = true;
         _lapsPassword = null;
+        _bitlockerKey = null;
         _stepSeconds = [];
 
-        _offboardingSteps = [
-            new("Henter LAPS-passord", OffboardingStepStatus.Pending),
-            new("Henter BitLocker-nøkkel", OffboardingStepStatus.Pending),
-            new("Oppretter sak i Pureservice", OffboardingStepStatus.Pending),
-            new("Fjerner fra Autopilot", OffboardingStepStatus.Pending),
-            new("Synkroniserer Intune", OffboardingStepStatus.Pending),
-            new("Wiper enhet", OffboardingStepStatus.Pending),
-            new("Fjerner fra Entra", OffboardingStepStatus.Pending),
-            new("Fjerner fra Intune", OffboardingStepStatus.Pending),
-            new("Tagger i Defender", OffboardingStepStatus.Pending)
-        ];
+        // Build step list dynamically based on selected method
+        var steps = new List<OffboardingStepResult>();
 
+        if (!isForceDelete)
+        {
+            steps.Add(new("Henter LAPS-passord", OffboardingStepStatus.Pending));
+            steps.Add(new("Henter BitLocker-nøkkel", OffboardingStepStatus.Pending));
+        }
+
+        steps.Add(new("Oppretter sak i Pureservice", OffboardingStepStatus.Pending));
+        steps.Add(new("Fjerner fra Autopilot", OffboardingStepStatus.Pending));
+
+        if (withWipe)
+        {
+            steps.Add(new("Synkroniserer Intune", OffboardingStepStatus.Pending));
+            steps.Add(new("Wiper enhet", OffboardingStepStatus.Pending));
+        }
+
+        if (withWipe || isForceDelete)
+        {
+            steps.Add(new("Fjerner fra Entra", OffboardingStepStatus.Pending));
+            steps.Add(new("Fjerner fra Intune", OffboardingStepStatus.Pending));
+        }
+
+        steps.Add(new("Tagger i Defender", OffboardingStepStatus.Pending));
+
+        _offboardingSteps = steps;
         StateHasChanged();
 
-        // Step 1: Fetch LAPS password before offboarding
-        await RunOffboardingStepAsync("Henter LAPS-passord", async () =>
+        // Step 1 & 2: Fetch LAPS and BitLocker - skipped for force delete
+        if (!isForceDelete)
         {
-            var credential = await _intuneService.GetLapsPasswordByAzureDeviceId(
-                _state.ManagedDevice.AzureADDeviceId, _state.BuildAuditContext());
-
-            if (credential?.Credentials is { Count: > 0 })
+            await RunOffboardingStepAsync("Henter LAPS-passord", async () =>
             {
-                _lapsPassword = credential.Credentials.First().DecodedPassword;
-            }
-        }, ct);
+                var credential = await _intuneService.GetLapsPasswordByAzureDeviceId(
+                    _state.ManagedDevice.AzureADDeviceId, _state.BuildAuditContext());
 
-        // Step 2: Fetch BitLocker key before offboarding
-        await RunOffboardingStepAsync("Henter BitLocker-nøkkel", async () =>
-        {
-            var key = await _intuneService.GetBitlockerRecoveryKeyByAzureAdDeviceIdAsync(
-                _state.ManagedDevice.AzureADDeviceId, _state.BuildAuditContext());
+                if (credential?.Credentials is { Count: > 0 })
+                {
+                    _lapsPassword = credential.Credentials.First().DecodedPassword;
+                }
+            }, ct);
 
-            if (key?.Key is not null)
+            await RunOffboardingStepAsync("Henter BitLocker-nøkkel", async () =>
             {
-                _bitlockerKey = key.Key;
-            }
-        }, ct);
+                var key = await _intuneService.GetBitlockerRecoveryKeyByAzureAdDeviceIdAsync(
+                    _state.ManagedDevice.AzureADDeviceId, _state.BuildAuditContext());
+
+                if (key?.Key is not null)
+                {
+                    _bitlockerKey = key.Key;
+                }
+            }, ct);
+        }
 
         // Step 3: Create ticket in Pureservice
         if (_state.PureserviceAssetBySn is null)
@@ -516,9 +535,16 @@ public partial class Home : ComponentBase
         {
             await RunOffboardingStepAsync("Oppretter sak i Pureservice", async () =>
             {
-                var subject = isPrivatization ? "Privatisering av pc" : "Sletting av pc";
+                var subject = isForceDelete
+                    ? "Tvangssletting av pc"
+                    : isPrivatization ? "Privatisering av pc" : "Sletting av pc";
 
-                var description = $"""
+                var description = isForceDelete
+                    ? $"""
+                    <p>Maskinen tvangsslettes.</p>
+                    <p>Behandlet av: {UserCtx.Upn}</p>
+                    """
+                    : $"""
                     <p>Maskinen skal {(isPrivatization ? "privatiseres" : "slettes")}.</p>
                     <p>Behandlet av: {UserCtx.Upn}</p>
                     <p>LAPS-passord: {_lapsPassword ?? "ikke tilgjengelig"}</p>
@@ -536,7 +562,6 @@ public partial class Home : ComponentBase
                     assetId: _state.PureserviceAssetBySn.Id,
                     routine: isPrivatization ? OffboardingRoutine.Privatization : OffboardingRoutine.Deletion,
                     userUpn: _state.EntraUser?.UserPrincipalName);
-
             }, ct);
         }
 
@@ -561,19 +586,14 @@ public partial class Home : ComponentBase
             }, ct);
         }
 
-        // Step 5: Sync Intune - wait until lastSyncDateTime changes (only with wipe)
-        if (!withWipe)
-        {
-            UpdateStep("Synkroniserer Intune", OffboardingStepStatus.Skipped, "Ikke valgt");
-        }
-        else
+        // Step 5 & 6: Sync and wipe - only for wipe method
+        if (withWipe)
         {
             await RunOffboardingStepAsync("Synkroniserer Intune", async () =>
             {
                 var syncBefore = _state.ManagedDevice.LastSyncDateTime;
                 await _intuneService.SyncManagedDeviceAsync(_state.ManagedDevice.Id);
 
-                // Poll until lastSyncDateTime changes - confirms device has checked in and received commands
                 while (!ct.IsCancellationRequested)
                 {
                     await Task.Delay(10000, ct);
@@ -584,20 +604,11 @@ public partial class Home : ComponentBase
                     }
                 }
             }, ct);
-        }
 
-        // Step 6: Wipe - wait until wipe is pending/issued, then until device is gone (only with wipe)
-        if (!withWipe)
-        {
-            UpdateStep("Wiper enhet", OffboardingStepStatus.Skipped, "Ikke valgt");
-        }
-        else
-        {
             await RunOffboardingStepAsync("Wiper enhet", async () =>
             {
                 await _intuneService.WipeManagedDeviceAsync(_state.ManagedDevice.Id, _state.BuildAuditContext());
 
-                // Poll until wipe action is registered in deviceActionResults
                 while (!ct.IsCancellationRequested)
                 {
                     await Task.Delay(5000, ct);
@@ -609,7 +620,6 @@ public partial class Home : ComponentBase
                     }
                 }
 
-                // Poll until wipePending - confirms device has received and started wipe
                 while (!ct.IsCancellationRequested)
                 {
                     await Task.Delay(5000, ct);
@@ -625,30 +635,27 @@ public partial class Home : ComponentBase
                         throw new InvalidOperationException($"Wipe feilet med status: {device.ManagementState}.");
                     }
                 }
-
             }, ct);
         }
 
-
-        // Step 7: Remove from Entra (only with wipe)
-        if (!withWipe)
+        // Step 7: Remove from Entra - wipe and force delete
+        if (withWipe || isForceDelete)
         {
-            UpdateStep("Fjerner fra Entra", OffboardingStepStatus.Skipped, "Ikke valgt");
-        }
-        else if (_state.EntraDevice is null)
-        {
-            UpdateStep("Fjerner fra Entra", OffboardingStepStatus.Skipped, "Ikke funnet");
-        }
-        else
-        {
-            await RunOffboardingStepAsync("Fjerner fra Entra", async () =>
+            if (_state.EntraDevice is null)
             {
-                await _entraDirectoryService.DeleteDeviceByAzureAdDeviceIdAsync(_state.ManagedDevice.AzureADDeviceId,
-                      _state.BuildAuditContext());
-            }, ct);
+                UpdateStep("Fjerner fra Entra", OffboardingStepStatus.Skipped, "Ikke funnet");
+            }
+            else
+            {
+                await RunOffboardingStepAsync("Fjerner fra Entra", async () =>
+                {
+                    await _entraDirectoryService.DeleteDeviceByAzureAdDeviceIdAsync(
+                        _state.ManagedDevice.AzureADDeviceId, _state.BuildAuditContext());
+                }, ct);
+            }
         }
 
-        // Step 8: Remove from Intune - skipped as device is automatically removed after wipe
+        // Step 8: Remove from Intune
         if (withWipe)
         {
             var wipeStep = _offboardingSteps.FirstOrDefault(s => s.StepName == "Wiper enhet");
@@ -657,11 +664,14 @@ public partial class Home : ComponentBase
             UpdateStep("Fjerner fra Intune",
                 wipeSuccess ? OffboardingStepStatus.Success : OffboardingStepStatus.Skipped,
                 ct.IsCancellationRequested ? "Avbrutt av bruker" :
-                wipeSuccess ? null : "Ikke utført");
+                wipeSuccess ? "Fjernet av wipe" : "Ikke utført");
         }
-        else
+        else if (isForceDelete)
         {
-            UpdateStep("Fjerner fra Intune", OffboardingStepStatus.Skipped, "Ikke valgt");
+            await RunOffboardingStepAsync("Fjerner fra Intune", async () =>
+            {
+                await _intuneService.DeleteManagedDeviceAsync(_state.ManagedDevice.Id, _state.BuildAuditContext());
+            }, ct);
         }
 
         // Step 9: Tag Defender

@@ -2,7 +2,7 @@
 
 // Well-known PureService name constants used for dynamic lookup.
 // Note: If your PureService environment uses different names, update these constants accordingly.
-internal static class PureserviceNames
+public static class PureserviceNames
 {
     // Ticket statuses
     public const string TicketStatusResolved = "Løst";
