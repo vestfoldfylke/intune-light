@@ -462,9 +462,9 @@ public sealed class PureserviceService
         var ticketTypeId = _configCache.TicketTypes.FirstOrDefault(t => t.Name == PureserviceNames.TicketTypeName)?.Id ?? 0;
         var priorityId = _configCache.Priorities.FirstOrDefault(p => p.Name == PureserviceNames.PriorityName && p.RequestTypeId == 1)?.Id ?? 0;
         var sourceId = _configCache.Sources.FirstOrDefault(s => s.Name == PureserviceNames.SourceName)?.Id ?? 0;
-        var category1Id = _configCache.Categories.FirstOrDefault(c => c.Name == PureserviceNames.Category1Name)?.Id ?? 17;
-        var category2Id = _configCache.Categories.FirstOrDefault(c => c.Name == PureserviceNames.Category2Name)?.Id ?? 2;
-        var category3Id = _configCache.Categories.FirstOrDefault(c => c.Name == PureserviceNames.Category3Name)?.Id ?? 3;
+        var category1Id = _configCache.Categories.FirstOrDefault(c => c.Name == PureserviceNames.Category1Name)?.Id ?? 17; // Fallback used in dev — "Klient" (id 17) substitutes for "Maskinvare"
+        var category2Id = _configCache.Categories.FirstOrDefault(c => c.Name == PureserviceNames.Category2Name)?.Id ?? 2;  // Fallback used in dev — "PC" exists in both environments
+        var category3Id = _configCache.Categories.FirstOrDefault(c => c.Name == PureserviceNames.Category3Name)?.Id ?? 22; // Fallback used in dev — "Privatisering" (id 22)
         var requestTypeId = _configCache.RequestTypes.FirstOrDefault(r => r.Key == PureserviceNames.RequestTypeName)?.Id ?? 0;
 
         var isStudent = userUpn?.Contains(OrganizationConstants.StudentEmailDomain) == true;
