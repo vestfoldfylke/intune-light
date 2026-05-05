@@ -306,52 +306,70 @@ public partial class Home : ComponentBase
         // Set loading target for spinner
         _loadingTarget = target;
 
-        await _uiErrorHandler.RunSafeAsync(async () =>
+        try
         {
-            switch (target)
+            await _uiErrorHandler.RunSafeAsync(async () =>
             {
-                case RefreshTarget.Intune:
-                    _state.ManagedDevice = await _intuneService.GetDeviceBySerialAsync(_state.SearchSerial);
-                    break;
+                switch (target)
+                {
+                    case RefreshTarget.Intune:
+                        _state.ManagedDevice = await _intuneService.GetDeviceBySerialAsync(_state.SearchSerial);
+                        break;
 
-                case RefreshTarget.Autopilot:
-                    _state.AutopilotDevice = await _intuneService.GetAutopilotDeviceBySerialAsync(_state.ManagedDevice.SerialNumber);
-                    break;
+                    case RefreshTarget.Autopilot:
+                        _state.AutopilotDevice = await _intuneService.GetAutopilotDeviceBySerialAsync(_state.ManagedDevice.SerialNumber);
+                        break;
 
-                case RefreshTarget.Defender:
-                    _state.DefenderDevice = await _defenderService.GetDeviceByAadDeviceIdAsync(_state.ManagedDevice.AzureADDeviceId);
+                    case RefreshTarget.Defender:
+                        _state.DefenderDevice = await _defenderService.GetDeviceByAadDeviceIdAsync(_state.ManagedDevice.AzureADDeviceId);
 
-                    if (_state.DefenderDevice is not null)
-                        _state.IsIsolated = await _defenderService.GetIsolationStatusByMachineId(_state.DefenderDevice.Id);
-                    else
-                        _state.IsIsolated = false;
+                        if (_state.DefenderDevice is not null)
+                            _state.IsIsolated = await _defenderService.GetIsolationStatusByMachineId(_state.DefenderDevice.Id);
+                        else
+                            _state.IsIsolated = false;
 
-                    break;
+                        break;
 
-                case RefreshTarget.Entra:
-                    _state.EntraDevice = await _entraDirectoryService.GetDeviceByAzureAdDeviceIdAsync(_state.ManagedDevice.AzureADDeviceId);
-                    break;
+                    case RefreshTarget.Entra:
+                        _state.EntraDevice = await _entraDirectoryService.GetDeviceByAzureAdDeviceIdAsync(_state.ManagedDevice.AzureADDeviceId);
+                        break;
 
-                case RefreshTarget.Pureservice:
-                    _state.PureserviceAssetBySn = await _pureserviceService.GetAssetBySerialAsync(_state.ManagedDevice.SerialNumber);
+                    case RefreshTarget.Pureservice:
+                        _state.PureserviceAssetBySn = await _pureserviceService.GetAssetBySerialAsync(_state.ManagedDevice.SerialNumber);
 
-                    if (_state.PureserviceAssetBySn is not null)
-                        _state.PureserviceRelationships = await _pureserviceService.GetRelationshipsByAssetIdAsync(_state.PureserviceAssetBySn.Id.ToString());
-                    else
-                        _state.PureserviceRelationships = null;
+                        if (_state.PureserviceAssetBySn is not null)
+                            _state.PureserviceRelationships = await _pureserviceService.GetRelationshipsByAssetIdAsync(_state.PureserviceAssetBySn.Id.ToString());
+                        else
+                            _state.PureserviceRelationships = null;
 
-                    break;
+                        break;
 
-                case RefreshTarget.Laps:
-                    _state.DeviceCredential = await _intuneService.GetLapsPasswordByAzureDeviceId(
-                        _state.ManagedDevice.AzureADDeviceId, _state.BuildAuditContext());
-                    break;
+                    case RefreshTarget.Laps:
+                        _state.DeviceCredential = await _intuneService.GetLapsPasswordByAzureDeviceId(
+                            _state.ManagedDevice.AzureADDeviceId, _state.BuildAuditContext());
+                        break;
 
-                case RefreshTarget.BitLocker:
-                    _state.BitlockerRecoveryKey = await _intuneService.GetBitlockerRecoveryKeyByAzureAdDeviceIdAsync(
-                        _state.ManagedDevice.AzureADDeviceId, _state.BuildAuditContext());
-                    break;
-            }
+                    case RefreshTarget.BitLocker:
+                        _state.BitlockerRecoveryKey = await _intuneService.GetBitlockerRecoveryKeyByAzureAdDeviceIdAsync(
+                            _state.ManagedDevice.AzureADDeviceId, _state.BuildAuditContext());
+                        break;
+
+                    case RefreshTarget.IseSession:
+                        var mac = _state.ManagedDevice.WiFiMacAddress ?? _state.ManagedDevice.EthernetMacAddress;
+
+                        if (mac is null)
+                        {
+                            _snackbar.Add("Ingen MAC-adresse funnet på enheten.", Severity.Warning);
+                            return;
+                        }
+
+                        _state.IseSession = await _iseSessionService.GetSessionByMacAsync(mac);
+                        break;
+                }
+            });
+        }
+        finally
+        {
 
             // Delay to give user action performed signal
             await Task.Delay(300);
@@ -360,7 +378,7 @@ public partial class Home : ComponentBase
             _loadingTarget = null;
 
             _state.Touch();
-        });
+        }
     }
 
     #endregion
@@ -375,7 +393,8 @@ public partial class Home : ComponentBase
         Entra,
         Pureservice,
         Laps,
-        BitLocker
+        BitLocker,
+        IseSession
     }
 
     #endregion

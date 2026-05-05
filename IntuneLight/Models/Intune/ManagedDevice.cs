@@ -24,6 +24,7 @@ public sealed class ManagedDevice
     public DateTimeOffset LastSyncDateTime { get; set; }
     public string AzureADDeviceId { get; set; } = "";
     public string WiFiMacAddress { get; set; } = "";
+    public string EthernetMacAddress { get; set; } = "";
     public long TotalStorageSpaceInBytes { get; set; }
     public long FreeStorageSpaceInBytes { get; set; }
     public List<DeviceActionResult>? DeviceActionResults { get; set; }

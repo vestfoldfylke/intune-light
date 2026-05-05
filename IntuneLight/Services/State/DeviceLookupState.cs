@@ -2,6 +2,7 @@
 using IntuneLight.Models.Defender;
 using IntuneLight.Models.Entra;
 using IntuneLight.Models.Intune;
+using IntuneLight.Models.Ise;
 using IntuneLight.Models.Pureservice;
 using IntuneLight.Models.State;
 
@@ -111,6 +112,7 @@ public sealed class DeviceLookupState
     public EntraDeviceCount?  EntraDeviceCount { get; set; }
     public HashSet<string> LapsRotationLockedDevices { get; } = [];
     public List<PureserviceAssetStatus>? AssetStatuses { get; set; }
+    public IseSession? IseSession { get; set; }
 
     #endregion
 
@@ -142,6 +144,7 @@ public sealed class DeviceLookupState
         IsSearchSerialTouched = false;
         HasSearched = false;
         AssetStatuses = null;
+        IseSession = null;
         NotifyStateChanged();
     }
 

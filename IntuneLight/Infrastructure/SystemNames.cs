@@ -35,4 +35,5 @@ public static class SystemNames
     public const string DefenderAvScan = "Defender | Antivirus skann";
     public const string DefenderTag = "Defender | Tagging";
 
+    public const string IseSession = "ISE | Sesjon";
 }

@@ -5,6 +5,7 @@
 @using IntuneLight.Models.Defender
 @using IntuneLight.Models.Entra
 @using IntuneLight.Models.Intune
+@using IntuneLight.Models.Ise
 @using IntuneLight.Models.Offboarding
 @using IntuneLight.Models.Pureservice
 @using IntuneLight.Models.State
@@ -239,8 +240,16 @@
                                     <MudText Typo="Typo.body2" Class="text-truncate">@UiFormat.TextOrFallback(_state.ManagedDevice.SerialNumber)</MudText>
                                 </MudItem>
                                 <MudItem xs="12" lg="4">
-                                    <MudText Typo="Typo.body2" Class="mb-1"><b>WiFi MAC-adresse:</b></MudText>
-                                    <MudText Typo="Typo.body2" Class="text-truncate">@UiFormat.TextOrFallback(_state.ManagedDevice.WiFiMacAddress)</MudText>
+                                    @if (_state.ManagedDevice.WiFiMacAddress is not null)
+                                    {
+                                        <MudText Typo="Typo.body2" Class="mb-1"><b>WiFi MAC-adresse:</b></MudText>
+                                        <MudText Typo="Typo.body2" Class="text-truncate">@_state.ManagedDevice.WiFiMacAddress</MudText>
+                                    }
+                                    else
+                                    {
+                                        <MudText Typo="Typo.body2" Class="mb-1"><b>Ethernet MAC-adresse:</b></MudText>
+                                        <MudText Typo="Typo.body2" Class="text-truncate">@UiFormat.TextOrFallback(_state.ManagedDevice.EthernetMacAddress)</MudText>
+                                    }
                                 </MudItem>
                                 <MudItem xs="12" lg="4">
                                     <MudText Typo="Typo.body2" Class="mb-1"><b>Modell:</b></MudText>
@@ -1271,6 +1280,97 @@
                     </MudCard>
                 </MudItem>
 
+                @* ISE NETTVERKSSTATUS *@
+                @if (_state.ManagedDevice is not null)
+                {
+                    <MudItem xs="12" md="6" lg="4">
+                        <MudCard Class="device-card" Elevation="3">
+
+                            <MudCardContent Class="device-card-content">
+
+                                <MudStack Spacing="2">
+
+                                    <MudStack Row AlignItems="AlignItems.Center" Class="device-card-topbar">
+                                        <MudIcon Icon="@Icons.Material.Outlined.NetworkCheck" Size="Size.Medium" />
+                                        <MudText Typo="Typo.subtitle1">Nettverksstatus</MudText>
+                                        <MudSpacer />
+                                        <MudProgressCircular Indeterminate="@IsLoading(RefreshTarget.IseSession)" Color="Color.Inherit" StrokeWidth="1">
+                                            <ChildContent>
+                                                <MudMenu Icon="@Icons.Material.Outlined.Settings" Class="pa-0" Dense=true AnchorOrigin="Origin.CenterLeft" TransformOrigin="Origin.CenterRight">
+                                                    <MudMenuItem Label="@(_state.IseSession is null ? "Hent status" : "Oppdater")"
+                                                                 OnClick="@(() => RefreshAsync(RefreshTarget.IseSession))" />
+                                                </MudMenu>
+                                            </ChildContent>
+                                        </MudProgressCircular>
+                                    </MudStack>
+
+                                    <MudDivider Class="mb-3" />
+
+                                    @if (_state.IseSession is null)
+                                    {
+                                        <MudText Typo="Typo.body2">
+                                            Trykk <b>Hent status</b> i menyen for å sjekke nettverksstatus.
+                                        </MudText>
+                                    }
+                                    else
+                                    {
+                                        var (modeColor, modeLabel) = GetModeDisplay(_state.IseSession.Mode);
+                                        
+                                        <MudGrid Spacing="2">
+                                            <MudItem xs="4">
+                                                <MudText Typo="Typo.body2"><b>Status:</b></MudText>
+                                            </MudItem>
+                                            <MudItem xs="8">
+                                                <MudText Typo="Typo.body2"
+                                                         Style="@(string.IsNullOrEmpty(modeColor) ? "" : $"color:{modeColor}; font-weight:600")">
+                                                    @modeLabel
+                                                </MudText>
+                                            </MudItem>
+                                            <MudItem xs="4">
+                                                <MudText Typo="Typo.body2"><b>IP-adresse:</b></MudText>
+                                            </MudItem>
+                                            <MudItem xs="8">
+                                                <MudText Typo="Typo.body2">@UiFormat.TextOrFallback(_state.IseSession.IpAddress, "ukjent")</MudText>
+                                            </MudItem>
+                                            <MudItem xs="4">
+                                                <MudText Typo="Typo.body2"><b>Sesjon startet:</b></MudText>
+                                            </MudItem>
+                                            <MudItem xs="8">
+                                                <MudText Typo="Typo.body2">@UiFormat.DateOrFallback(_state.IseSession.LastSeen, "g", "ukjent")</MudText>
+                                            </MudItem>
+                                            <MudItem xs="4">
+                                                <MudText Typo="Typo.body2"><b>Bruker:</b></MudText>
+                                            </MudItem>
+                                            <MudItem xs="8">
+                                                <MudText Typo="Typo.body2">@UiFormat.TextOrFallback(_state.IseSession.UserName, "ukjent")</MudText>
+                                            </MudItem>
+                                        </MudGrid>
+                                    }
+
+                                </MudStack>
+
+                            </MudCardContent>
+
+                            <MudCardActions Class="device-card-actions">
+                                <MudStack Style="width:100%" Justify="Justify.SpaceBetween" Row="true">
+                                    @if (!string.IsNullOrWhiteSpace(_state.IseSession?.RawXml))
+                                    {
+                                        <MudButton Size="Size.Small"
+                                                   Variant="Variant.Text"
+                                                   Color="Color.Secondary"
+                                                   EndIcon="@Icons.Material.Outlined.Code"
+                                                   OnClick="@(async () => await ShowJsonViewer(_state.IseSession.RawXml))">
+                                            Vis rådata
+                                        </MudButton>
+                                    }
+                                    <MudSpacer />
+                                </MudStack>
+                            </MudCardActions>
+
+                        </MudCard>
+                    </MudItem>
+                }
+
                 @* OFFBOARDING *@
                 @if (_state.ManagedDevice is not null)
                 {
@@ -1613,6 +1713,15 @@
     private string? UserPhotoDataUrl => _state.EntraUserPhoto is { Length: > 0 }
                     ? $"data:image/jpeg;base64,{Convert.ToBase64String(_state.EntraUserPhoto)}"
                     : null;
+
+    // Returns display properties for a given exam mode.
+    private static (string Color, string Label) GetModeDisplay(ExamMode mode) => mode switch
+    {
+        ExamMode.Exam => ("var(--mud-palette-success)", "Eksamensmodus"),
+        ExamMode.Test => ("var(--mud-palette-warning)", "Prøvemodus"),
+        ExamMode.Normal => ("", "Normal"),
+        _ => ("", "Ukjent")
+    };
 
     #endregion
 
