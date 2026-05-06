@@ -9,6 +9,8 @@ public sealed class IseSession
     public DateTime? LastSeen { get; init; }
     public string? AznProfile { get; init; }
 
+    public bool SessionFound { get; init; } = true;
+
     // Raw Xml payload for troubleshooting / raw viewer
     public string RawXml { get; set; } = string.Empty;
 }

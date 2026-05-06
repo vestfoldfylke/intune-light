@@ -44,6 +44,13 @@ public sealed class IseSessionService(
         var response = await client.SendAsync(request);
         var content = await response.Content.ReadAsStringAsync();
 
+
+        // Early check for specific 500 error indicating no session data
+        if (response.StatusCode == System.Net.HttpStatusCode.InternalServerError && content.Contains("Session data is not available"))
+        {
+            return new IseSession { SessionFound = false, RawXml = content };
+        }
+
         // Ensure success or treat no-data as valid (404/204)
         if (!_guard.EnsureSuccessOrNoData(response, SystemNames.IseSession, url, content))
         {
