@@ -324,9 +324,13 @@ public partial class Home : ComponentBase
                         _state.DefenderDevice = await _defenderService.GetDeviceByAadDeviceIdAsync(_state.ManagedDevice.AzureADDeviceId);
 
                         if (_state.DefenderDevice is not null)
+                        {
                             _state.IsIsolated = await _defenderService.GetIsolationStatusByMachineId(_state.DefenderDevice.Id);
+                        }
                         else
+                        {
                             _state.IsIsolated = false;
+                        }
 
                         break;
 
@@ -338,20 +342,22 @@ public partial class Home : ComponentBase
                         _state.PureserviceAssetBySn = await _pureserviceService.GetAssetBySerialAsync(_state.ManagedDevice.SerialNumber);
 
                         if (_state.PureserviceAssetBySn is not null)
+                        {
                             _state.PureserviceRelationships = await _pureserviceService.GetRelationshipsByAssetIdAsync(_state.PureserviceAssetBySn.Id.ToString());
+                        }
                         else
+                        {
                             _state.PureserviceRelationships = null;
+                        }
 
                         break;
 
                     case RefreshTarget.Laps:
-                        _state.DeviceCredential = await _intuneService.GetLapsPasswordByAzureDeviceId(
-                            _state.ManagedDevice.AzureADDeviceId, _state.BuildAuditContext());
+                        _state.DeviceCredential = await _intuneService.GetLapsPasswordByAzureDeviceId(_state.ManagedDevice.AzureADDeviceId, _state.BuildAuditContext());
                         break;
 
                     case RefreshTarget.BitLocker:
-                        _state.BitlockerRecoveryKey = await _intuneService.GetBitlockerRecoveryKeyByAzureAdDeviceIdAsync(
-                            _state.ManagedDevice.AzureADDeviceId, _state.BuildAuditContext());
+                        _state.BitlockerRecoveryKey = await _intuneService.GetBitlockerRecoveryKeyByAzureAdDeviceIdAsync(_state.ManagedDevice.AzureADDeviceId, _state.BuildAuditContext());
                         break;
 
                     case RefreshTarget.IseSession:
