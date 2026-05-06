@@ -1312,6 +1312,12 @@
                                             Trykk <b>Hent status</b> i menyen for å sjekke nettverksstatus.
                                         </MudText>
                                     }
+                                    else if (!_state.IseSession.SessionFound)
+                                    {
+                                        <MudText Typo="Typo.body2">
+                                            Ingen aktiv sesjon funnet for MAC-adressen.
+                                        </MudText>
+                                    }
                                     else
                                     {
                                         var (modeColor, modeLabel) = GetModeDisplay(_state.IseSession.Mode);
