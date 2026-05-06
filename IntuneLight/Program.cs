@@ -103,11 +103,15 @@ builder.Services.AddHttpClient("Pureservice", (sp, client) =>
     client.BaseAddress = new Uri(opt.BaseAddress);
 });
 
-// Named HttpClient for ISE
+// Named HttpClient for ISE — SSL validation bypassed: ISE uses a self-signed certificate over private VNet
 builder.Services.AddHttpClient("Ise", (sp, client) =>
 {
     var opt = sp.GetRequiredService<IOptions<IseOptions>>().Value;
     client.BaseAddress = new Uri(opt.BaseUrl);
+})
+.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+{
+    ServerCertificateCustomValidationCallback = (_, _, _, _) => true
 });
 
 // Register external api services
