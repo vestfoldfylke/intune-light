@@ -1,6 +1,7 @@
 ﻿@using System.Text.Encodings.Web
 @using System.Text.Json
 @using IntuneLight.Infrastructure
+@using System.Xml.Linq
 @inject IDialogService DialogService
 
 <MudDialog DefaultFocus="DefaultFocus.None" Style="min-width:400px !important">
@@ -35,14 +36,35 @@
                 return string.Empty;
             }
 
-            using var doc = JsonDocument.Parse(Json);
-            var options = new JsonSerializerOptions
+            // Handle XML
+            if (Json.TrimStart().StartsWith("<"))
             {
-                WriteIndented = true,
-                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-            };
+                try
+                {
+                    var doc = XDocument.Parse(Json);
+                    return doc.ToString();
+                }
+                catch
+                {
+                    return Json;
+                }
+            }
 
-            return JsonSerializer.Serialize(doc.RootElement, options);
+            // Handle JSON
+            try
+            {
+                using var doc = JsonDocument.Parse(Json);
+                var options = new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                };
+                return JsonSerializer.Serialize(doc.RootElement, options);
+            }
+            catch
+            {
+                return Json;
+            }
         }
     }
 }

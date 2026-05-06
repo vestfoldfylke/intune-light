@@ -53,6 +53,9 @@ builder.Services.Configure<EntraIdOptions>(builder.Configuration.GetSection("Ent
 // Bind HttpClients options (BaseAddress)
 builder.Services.Configure<HttpClientsOptions>(builder.Configuration.GetRequiredSection("HttpClients"));
 
+// Bind ISE options from appsettings/env vars
+builder.Services.Configure<IseOptions>(builder.Configuration.GetSection("Ise"));
+
 // Bind Pureservice options from appsettings/env vars
 builder.Services.Configure<PureserviceOptions>(builder.Configuration.GetSection("Pureservice"));
 
@@ -100,12 +103,20 @@ builder.Services.AddHttpClient("Pureservice", (sp, client) =>
     client.BaseAddress = new Uri(opt.BaseAddress);
 });
 
+// Named HttpClient for ISE
+builder.Services.AddHttpClient("Ise", (sp, client) =>
+{
+    var opt = sp.GetRequiredService<IOptions<IseOptions>>().Value;
+    client.BaseAddress = new Uri(opt.BaseUrl);
+});
+
 // Register external api services
 builder.Services.AddScoped<IIntuneService, IntuneService>();
 builder.Services.AddScoped<IDefenderService, DefenderService>();
 builder.Services.AddScoped<IEntraDirectoryService, EntraDirectoryService>();
 builder.Services.AddScoped<IPureserviceService, PureserviceService>();
 builder.Services.AddSingleton<PureserviceConfigCache>();
+builder.Services.AddScoped<IIseSessionService, IseSessionService>();
 
 // Register ApiResponseGuard, centralized API error handling
 builder.Services.AddScoped<IApiResponseGuard, ApiResponseGuard>();
