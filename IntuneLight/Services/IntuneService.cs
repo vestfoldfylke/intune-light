@@ -77,11 +77,30 @@ public sealed class IntuneService(IHttpClientFactory httpClientFactory, ITokenSe
 
         // Find the first device and attach raw JSON
         var intuneDevice = payload?.Value?.FirstOrDefault();
-        if (intuneDevice != null)
+        if (intuneDevice == null)
         {
-            intuneDevice.RawJson = content;
+            return null;
         }
-        
+
+        intuneDevice.RawJson = content;
+
+        // Only fetch ethernetMacAddress if WiFiMacAddress is missing
+        if (string.IsNullOrWhiteSpace(intuneDevice.WiFiMacAddress))
+        {
+            var ethernetUrl = $"beta/deviceManagement/managedDevices('{intuneDevice.Id}')?$select=ethernetMacAddress";
+            var ethernetResponse = await client.GetAsync(ethernetUrl);
+            var ethernetContent = await ethernetResponse.Content.ReadAsStringAsync();
+
+            if (ethernetResponse.IsSuccessStatusCode && !string.IsNullOrWhiteSpace(ethernetContent))
+            {
+                var ethernetPayload = JsonSerializer.Deserialize<ManagedDevice>(ethernetContent, _jsonSerializerOptions);
+                if (!string.IsNullOrWhiteSpace(ethernetPayload?.EthernetMacAddress))
+                {
+                    intuneDevice.EthernetMacAddress = ethernetPayload.EthernetMacAddress;
+                }
+            }
+        }
+
         return intuneDevice;
     }
 

@@ -240,7 +240,7 @@
                                     <MudText Typo="Typo.body2" Class="text-truncate">@UiFormat.TextOrFallback(_state.ManagedDevice.SerialNumber)</MudText>
                                 </MudItem>
                                 <MudItem xs="12" lg="4">
-                                    @if (_state.ManagedDevice.WiFiMacAddress is not null)
+                                    @if (!string.IsNullOrWhiteSpace(_state.ManagedDevice.WiFiMacAddress))
                                     {
                                         <MudText Typo="Typo.body2" Class="mb-1"><b>WiFi MAC-adresse:</b></MudText>
                                         <MudText Typo="Typo.body2" Class="text-truncate">@_state.ManagedDevice.WiFiMacAddress</MudText>
@@ -1283,6 +1283,9 @@
                 @* ISE NETTVERKSSTATUS *@
                 @if (_state.ManagedDevice is not null)
                 {
+                    @* Check if mac-adresse is available *@
+                    var iseMac = GetIseMac();
+                    
                     <MudItem xs="12" md="6" lg="4">
                         <MudCard Class="device-card" Elevation="3">
 
@@ -1294,19 +1297,29 @@
                                         <MudIcon Icon="@Icons.Material.Outlined.NetworkCheck" Size="Size.Medium" />
                                         <MudText Typo="Typo.subtitle1">Nettverksstatus</MudText>
                                         <MudSpacer />
-                                        <MudProgressCircular Indeterminate="@IsLoading(RefreshTarget.IseSession)" Color="Color.Inherit" StrokeWidth="1">
-                                            <ChildContent>
-                                                <MudMenu Icon="@Icons.Material.Outlined.Settings" Class="pa-0" Dense=true AnchorOrigin="Origin.CenterLeft" TransformOrigin="Origin.CenterRight">
-                                                    <MudMenuItem Label="@(_state.IseSession is null ? "Hent status" : "Oppdater")"
-                                                                 OnClick="@(() => RefreshAsync(RefreshTarget.IseSession))" />
-                                                </MudMenu>
-                                            </ChildContent>
-                                        </MudProgressCircular>
+
+                                        @if (iseMac is not null)
+                                        {
+                                            <MudProgressCircular Indeterminate="@IsLoading(RefreshTarget.IseSession)" Color="Color.Inherit" StrokeWidth="1">
+                                                <ChildContent>
+                                                    <MudMenu Icon="@Icons.Material.Outlined.Settings" Class="pa-0" Dense=true AnchorOrigin="Origin.CenterLeft" TransformOrigin="Origin.CenterRight">
+                                                        <MudMenuItem Label="@(_state.IseSession is null ? "Hent status" : "Oppdater")"
+                                                                     OnClick="@(() => RefreshAsync(RefreshTarget.IseSession))" />
+                                                    </MudMenu>
+                                                </ChildContent>
+                                            </MudProgressCircular>
+                                        }
                                     </MudStack>
 
                                     <MudDivider Class="mb-3" />
 
-                                    @if (_state.IseSession is null)
+                                    @if (iseMac is null)
+                                    {
+                                        <MudText Typo="Typo.body2">
+                                            Ingen MAC-adresse registrert på enheten.
+                                        </MudText>
+                                    }
+                                    else if (_state.IseSession is null)
                                     {
                                         <MudText Typo="Typo.body2">
                                             Trykk <b>Hent status</b> i menyen for å sjekke nettverksstatus.
