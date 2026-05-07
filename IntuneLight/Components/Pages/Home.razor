@@ -1355,7 +1355,7 @@
                                                 <MudText Typo="Typo.body2"><b>Sesjon startet:</b></MudText>
                                             </MudItem>
                                             <MudItem xs="8">
-                                                <MudText Typo="Typo.body2">@UiFormat.DateOrFallback(_state.IseSession.LastSeen, "g", "ukjent")</MudText>
+                                                <MudText Typo="Typo.body2">@UiFormat.DateOrFallback(_state.IseSession.LastSeen?.LocalDateTime, "g", "ukjent")</MudText>
                                             </MudItem>
                                             <MudItem xs="4">
                                                 <MudText Typo="Typo.body2"><b>Bruker:</b></MudText>
