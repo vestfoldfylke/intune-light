@@ -6,7 +6,7 @@ public sealed class IseSession
     public string? IpAddress { get; init; }
     public string? Vlan { get; init; }
     public string? UserName { get; init; }
-    public DateTime? LastSeen { get; init; }
+    public DateTimeOffset? LastSeen { get; init; }
     public string? AznProfile { get; init; }
 
     public bool SessionFound { get; init; } = true;

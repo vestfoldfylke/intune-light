@@ -73,7 +73,7 @@ public sealed class IseSessionService(
             IpAddress = p?.Element("framed_ip_address")?.Value,
             Vlan = p?.Element("vlan")?.Value,
             UserName = p?.Element("user_name")?.Value?.Split(",")[0],
-            LastSeen = DateTime.TryParse(p?.Element("auth_acs_timestamp")?.Value, out var dt) ? dt : null,
+            LastSeen = DateTimeOffset.TryParse(p?.Element("auth_acs_timestamp")?.Value, out var dt) ? dt : null,
             AznProfile = p?.Element("selected_azn_profiles")?.Value,
             RawXml = content
         };
