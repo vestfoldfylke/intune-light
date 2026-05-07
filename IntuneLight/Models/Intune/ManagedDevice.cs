@@ -45,4 +45,3 @@ public sealed class DeviceActionResult
     public DateTimeOffset? StartDateTime { get; set; }
     public DateTimeOffset? LastUpdatedDateTime { get; set; }
 }
-

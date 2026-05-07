@@ -361,11 +361,9 @@ public partial class Home : ComponentBase
                         break;
 
                     case RefreshTarget.IseSession:
-                        var mac = _state.ManagedDevice.WiFiMacAddress ?? _state.ManagedDevice.EthernetMacAddress;
-
+                        var mac = GetIseMac();
                         if (mac is null)
                         {
-                            _snackbar.Add("Ingen MAC-adresse funnet på enheten.", Severity.Warning);
                             return;
                         }
 
@@ -835,6 +833,18 @@ public partial class Home : ComponentBase
             return "Offboarding fullført";
         }
     }
+
+    #endregion
+
+    #region Helpers
+
+    // Returns the best available MAC address for ISE lookup, preferring WiFi over Ethernet.
+    private string? GetIseMac() =>
+        !string.IsNullOrWhiteSpace(_state.ManagedDevice?.WiFiMacAddress)
+            ? _state.ManagedDevice.WiFiMacAddress
+            : !string.IsNullOrWhiteSpace(_state.ManagedDevice?.EthernetMacAddress)
+                ? _state.ManagedDevice.EthernetMacAddress
+                : null;
 
     #endregion
 }
