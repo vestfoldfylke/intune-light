@@ -6,7 +6,6 @@ name: Build and deploy dotnet project to Azure Web App - PROD
 on:
   release:
     types: [published]
-    branches: [main]
   workflow_dispatch:
 
 env:
@@ -17,13 +16,16 @@ env:
 
 jobs:
   build-and-deploy:
+    if: |
+      github.event_name == 'workflow_dispatch' || 
+      (github.event_name == 'release' && github.event.release.target_commitish == 'main')
     runs-on: self-hosted
     steps:
       - name: 'Checkout GitHub Action'
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Setup DotNet ${{ env.DOTNET_VERSION }} Environment
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
@@ -35,7 +37,7 @@ jobs:
           popd
 
       - name: 'Run Azure Functions Action'
-        uses: Azure/functions-action@v1
+        uses: Azure/functions-action@bc63708cc6539760eea18d8a7de4ce8ef5fdf593 # v1.5.6
         id: fa
         with:
           app-name: ${{ env.APP_NAME }}
