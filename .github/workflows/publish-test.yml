@@ -11,8 +11,8 @@ on:
 env:
   APP_NAME: 'vfkdlzdustinlweb' # set this to your function or web app name
   AZURE_FUNCTIONAPP_PACKAGE_PATH: 'IntuneLight' # set this to the path to your web app project, defaults to the repository root
-  DOTNET_VERSION: '9.0.x'
-  FRAMEWORK_VERSION: 'net9.0'
+  DOTNET_VERSION: '10.0.x'
+  FRAMEWORK_VERSION: 'net10.0'
 
 jobs:
   build-and-deploy:
