@@ -1,42 +1,20 @@
 # Docs for the Azure Web Apps Deploy action: https://github.com/azure/functions-action
 # More GitHub Actions for Azure: https://github.com/Azure/actions
 
-name: Build and deploy dotnet project to Azure Web App - TEST
+name: Build and deploy dotnet core project to Azure Function App - vfkdlzintegpuss
 
 on:
   push:
-    branches: ["main"]
+    branches:
+      - main
   workflow_dispatch:
 
-env:
-  APP_NAME: 'vfkdlzdustinlweb' # set this to your function or web app name
-  AZURE_FUNCTIONAPP_PACKAGE_PATH: 'IntuneLight' # set this to the path to your web app project, defaults to the repository root
-  DOTNET_VERSION: '10.0.x'
-  FRAMEWORK_VERSION: 'net10.0'
-
 jobs:
-  build-and-deploy:
-    runs-on: self-hosted
-    steps:
-      - name: 'Checkout GitHub Action'
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-
-      - name: Setup DotNet ${{ env.DOTNET_VERSION }} Environment
-        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-
-      - name: 'Resolve Project Dependencies Using Dotnet'
-        shell: bash # For Windows, use pwsh
-        run: |
-          pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
-          dotnet publish --configuration Release --output ./output -f ${{ env.FRAMEWORK_VERSION }}
-          popd
-
-      - name: 'Run Azure Functions Action'
-        uses: Azure/functions-action@bc63708cc6539760eea18d8a7de4ce8ef5fdf593 # v1.5.6
-        id: fa
-        with:
-          app-name: ${{ env.APP_NAME }}
-          package: '${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output'
-          publish-profile: ${{ secrets.TEST_AZURE_FUNCTIONAPP_PUBLISH_PROFILE }} # Remove publish-profile to use Azure RBAC
+  deploy-az-app-service-dotnet:
+    uses: vestfoldfylke/shared/.github/workflows/deploy-az-app-service-dotnet.yml@main
+    with:
+      azure_appname: "vfkdlzdustinlweb" # required
+      azure_functionapp_package_path: "IntuneLight" # required. set to path project path. if multiple projects exists in same solution, set this to the project to deploy
+      dotnet_version: "10.0" # required and must follow the TargetFramework version set in the project file (*.csproj)
+    secrets:
+      azure_publishprofile: ${{ secrets.TEST_AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
