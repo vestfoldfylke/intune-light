@@ -13,6 +13,11 @@ public interface IApiResponseGuard
     bool EnsureJsonBody(string body, string systemName, string url, int statusCode);
     void EnsureSuccess(HttpResponseMessage response, string systemName, string url, string body, AuditContext? audit = null);
     bool EnsureSuccessOrNoData(HttpResponseMessage response, string systemName, string url, string body, AuditContext? audit = null);
+
+    // Captures the current actor, source IP, and a fresh correlation id once. Pass the result into
+    // every BuildAuditContext() call of a multi-step operation so all steps share one attribution,
+    // instead of each step re-resolving ambient HttpContext state independently.
+    AuditContext CaptureAttribution();
 }
 
 
@@ -93,15 +98,33 @@ public class ApiResponseGuard(
             ResponseBody = body
         };
 
-        // Log structured error for central logging
-        _logger.LogError(
-            "API call to {System} failed with status {StatusCode} {Reason}. Url: {Url}. Body: {Body}. Actor: {Actor}",
-            info.SystemName,
-            info.StatusCode,
-            info.ReasonPhrase,
-            info.Url,
-            info.ResponseBody,
-            _userContext.Actor);
+        // Audit-relevant systems must record failed/denied attempts too, not just successes -
+        // otherwise a rejected wipe/delete/tag/credential request leaves no trace in the audit trail.
+        if (ActionTypeMap.ContainsKey(systemName))
+        {
+            using (PushAuditContext(systemName, "Failed", audit))
+            {
+                _logger.LogError(
+                    "API call to {System} failed with status {StatusCode} {Reason}. Url: {Url}. Body: {Body}. Actor: {Actor}",
+                    info.SystemName,
+                    info.StatusCode,
+                    info.ReasonPhrase,
+                    info.Url,
+                    info.ResponseBody,
+                    _userContext.Actor);
+            }
+        }
+        else
+        {
+            _logger.LogError(
+                "API call to {System} failed with status {StatusCode} {Reason}. Url: {Url}. Body: {Body}. Actor: {Actor}",
+                info.SystemName,
+                info.StatusCode,
+                info.ReasonPhrase,
+                info.Url,
+                info.ResponseBody,
+                _userContext.Actor);
+        }
 
         throw new ApiException(info);
     }
@@ -126,7 +149,7 @@ public class ApiResponseGuard(
         }
 
         // All other non-success are real errors
-        EnsureSuccess(response, systemName, url, body); // Throws ApiException
+        EnsureSuccess(response, systemName, url, body, audit); // Throws ApiException
 
         // Log credential retrieval (LAPS/BitLocker) - direct lookup, no OData result check needed
         if (metricBase != null && CredentialSystems.Contains(systemName))
@@ -218,6 +241,16 @@ public class ApiResponseGuard(
         return false;
     }
 
+    // Captures the current actor, source IP, and a fresh correlation id once, at the point where a
+    // multi-step operation begins (before any awaits) - the most reliable point at which ambient
+    // HttpContext state is still resolvable on a Blazor Server circuit.
+    public AuditContext CaptureAttribution() => new()
+    {
+        Actor = _userContext.Actor,
+        SourceIpAddress = GetClientIp(),
+        CorrelationId = Guid.NewGuid().ToString()
+    };
+
     #endregion
 
     #region Internal helpers
@@ -279,17 +312,20 @@ public class ApiResponseGuard(
         }.ToFrozenDictionary();
 
     // Pushes all required audit properties to log context for Azure Log Analytics ingestion.
+    // Prefers attribution captured once via CaptureAttribution() (audit.Actor/SourceIpAddress/CorrelationId)
+    // over ambient HttpContext/Activity lookups, since the latter are re-resolved per call and are not
+    // reliable for multi-step operations that span several awaited calls on a Blazor Server circuit.
     internal IDisposable PushAuditContext(string systemName, string resultStatus, AuditContext? audit = null) =>
         new CompositeDisposable(
             LogContext.PushProperty(Vestfold.Extensions.Logging.Constants.Properties.SecurityAudit, true),
             LogContext.PushProperty("ActionType", ActionTypeMap.TryGetValue(systemName, out var actionType) ? actionType : systemName),
-            LogContext.PushProperty("UserPrincipalName", _userContext.Actor),
+            LogContext.PushProperty("UserPrincipalName", audit?.Actor ?? _userContext.Actor),
             LogContext.PushProperty("TargetDeviceName", audit?.DeviceName ?? string.Empty),
             LogContext.PushProperty("TargetDeviceId", audit?.DeviceId ?? string.Empty),
             LogContext.PushProperty("TargetDeviceOwner", audit?.DeviceOwner ?? string.Empty),
-            LogContext.PushProperty("SourceIPAddress", GetClientIp() ?? string.Empty),
+            LogContext.PushProperty("SourceIPAddress", audit?.SourceIpAddress ?? GetClientIp() ?? string.Empty),
             LogContext.PushProperty("ResultStatus", resultStatus),
-            LogContext.PushProperty("CorrelationId", Activity.Current?.Id ?? _httpContextAccessor.HttpContext?.TraceIdentifier ?? string.Empty)
+            LogContext.PushProperty("CorrelationId", audit?.CorrelationId ?? Activity.Current?.Id ?? _httpContextAccessor.HttpContext?.TraceIdentifier ?? string.Empty)
         );
 
     // Combines multiple IDisposables into one for use in using statements.

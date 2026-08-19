@@ -490,6 +490,11 @@ public partial class Home : ComponentBase
         _bitlockerKey = null;
         _stepSeconds = [];
 
+        // Capture actor/IP/correlation id once, before the multi-step chain starts, so every step
+        // below attributes to the same values instead of each awaited call re-resolving them from
+        // ambient HttpContext state independently.
+        var attribution = _apiResponseGuard.CaptureAttribution();
+
         // Build step list dynamically based on selected method
         var steps = new List<OffboardingStepResult>();
 
@@ -525,7 +530,7 @@ public partial class Home : ComponentBase
             await RunOffboardingStepAsync("Henter LAPS-passord", async () =>
             {
                 var credential = await _intuneService.GetLapsPasswordByAzureDeviceId(
-                    _state.ManagedDevice.AzureADDeviceId, _state.BuildAuditContext());
+                    _state.ManagedDevice.AzureADDeviceId, _state.BuildAuditContext(attribution));
 
                 if (credential?.Credentials is { Count: > 0 })
                 {
@@ -536,7 +541,7 @@ public partial class Home : ComponentBase
             await RunOffboardingStepAsync("Henter BitLocker-nøkkel", async () =>
             {
                 var key = await _intuneService.GetBitlockerRecoveryKeyByAzureAdDeviceIdAsync(
-                    _state.ManagedDevice.AzureADDeviceId, _state.BuildAuditContext());
+                    _state.ManagedDevice.AzureADDeviceId, _state.BuildAuditContext(attribution));
 
                 if (key?.Key is not null)
                 {
@@ -605,7 +610,7 @@ public partial class Home : ComponentBase
                 }
 
                 await _intuneService.DeleteAutopilotDeviceAsync(_state.AutopilotDevice.Id,
-                      _state.BuildAuditContext());
+                      _state.BuildAuditContext(attribution));
             }, ct);
         }
 
@@ -630,7 +635,7 @@ public partial class Home : ComponentBase
 
             await RunOffboardingStepAsync("Wiper enhet", async () =>
             {
-                await _intuneService.WipeManagedDeviceAsync(_state.ManagedDevice.Id, _state.BuildAuditContext());
+                await _intuneService.WipeManagedDeviceAsync(_state.ManagedDevice.Id, _state.BuildAuditContext(attribution));
 
                 while (!ct.IsCancellationRequested)
                 {
@@ -673,7 +678,7 @@ public partial class Home : ComponentBase
                 await RunOffboardingStepAsync("Fjerner fra Entra", async () =>
                 {
                     await _entraDirectoryService.DeleteDeviceByAzureAdDeviceIdAsync(
-                        _state.ManagedDevice.AzureADDeviceId, _state.BuildAuditContext());
+                        _state.ManagedDevice.AzureADDeviceId, _state.BuildAuditContext(attribution));
                 }, ct);
             }
         }
@@ -693,7 +698,7 @@ public partial class Home : ComponentBase
         {
             await RunOffboardingStepAsync("Fjerner fra Intune", async () =>
             {
-                await _intuneService.DeleteManagedDeviceAsync(_state.ManagedDevice.Id, _state.BuildAuditContext());
+                await _intuneService.DeleteManagedDeviceAsync(_state.ManagedDevice.Id, _state.BuildAuditContext(attribution));
             }, ct);
         }
 
@@ -706,11 +711,11 @@ public partial class Home : ComponentBase
         {
             await RunOffboardingStepAsync("Tagger i Defender", async () =>
             {
-                await _defenderService.AddMachineTagAsync(_state.DefenderDevice.Id, DefenderTags.Offboarded);
+                await _defenderService.AddMachineTagAsync(_state.DefenderDevice.Id, DefenderTags.Offboarded, _state.BuildAuditContext(attribution));
 
                 if (isPrivatization)
                 {
-                    await _defenderService.AddMachineTagAsync(_state.DefenderDevice.Id, DefenderTags.Privatized);
+                    await _defenderService.AddMachineTagAsync(_state.DefenderDevice.Id, DefenderTags.Privatized, _state.BuildAuditContext(attribution));
                 }
             }, ct);
         }

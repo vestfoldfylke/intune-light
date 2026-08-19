@@ -239,8 +239,10 @@ public sealed class DeviceLookupState
 
     #region Audit
 
-    // Builds an AuditContext from current device lookup state.
-    public AuditContext BuildAuditContext() => new()
+    // Builds an AuditContext from current device lookup state. Pass an `attribution` captured once
+    // via IApiResponseGuard.CaptureAttribution() for multi-step operations so every step attributes
+    // to the same actor/IP/correlation id instead of each step re-resolving them from ambient HttpContext.
+    public AuditContext BuildAuditContext(AuditContext? attribution = null) => new()
     {
         DeviceId = ManagedDevice?.AzureADDeviceId,
         DeviceName = ManagedDevice?.DeviceName
@@ -248,7 +250,10 @@ public sealed class DeviceLookupState
             ?? AutopilotDevice?.SerialNumber,
         DeviceOwner = EntraUser?.UserPrincipalName
             ?? EntraUser?.DisplayName
-            ?? "Ukjent"
+            ?? "Ukjent",
+        Actor = attribution?.Actor,
+        SourceIpAddress = attribution?.SourceIpAddress,
+        CorrelationId = attribution?.CorrelationId
     };
 
     #endregion
