@@ -9,11 +9,11 @@ namespace IntuneLight.Services;
 
 public interface IDefenderService
 {
-    Task AddMachineTagAsync(string machineId, string tag);
+    Task AddMachineTagAsync(string machineId, string tag, AuditContext audit);
     Task<DefenderDevice?> GetDeviceByAadDeviceIdAsync(string aadDeviceId);
     Task<DefenderDevice?> GetDeviceByHostnameAsync(string hostname);
     Task<bool> GetIsolationStatusByMachineId(string machineId);
-    Task RemoveMachineTagAsync(string machineId, string tag);
+    Task RemoveMachineTagAsync(string machineId, string tag, AuditContext audit);
     Task<DefenderScanResult> RunAntiVirusScanAsync(string machineId, DefenderScanType scanType, AuditContext audit, string? comment = null);
 }
 
@@ -231,7 +231,7 @@ public sealed class DefenderService(IHttpClientFactory httpClientFactory, IToken
     }
 
     // Adds a tag to a Defender machine. One tag per call — call twice for multiple tags.
-    public async Task AddMachineTagAsync(string machineId, string tag)
+    public async Task AddMachineTagAsync(string machineId, string tag, AuditContext audit)
     {
         // Validate input
         UiValidation.RequireNotNullOrWhiteSpace(
@@ -262,11 +262,11 @@ public sealed class DefenderService(IHttpClientFactory httpClientFactory, IToken
         var content = await response.Content.ReadAsStringAsync();
 
         // Ensure success
-        _guard.EnsureSuccess(response, SystemNames.DefenderTag, url, content);
+        _guard.EnsureSuccess(response, SystemNames.DefenderTag, url, content, audit);
     }
 
     // Removes a tag from a Defender machine.
-    public async Task RemoveMachineTagAsync(string machineId, string tag)
+    public async Task RemoveMachineTagAsync(string machineId, string tag, AuditContext audit)
     {
         // Validate input
         UiValidation.RequireNotNullOrWhiteSpace(
@@ -297,7 +297,7 @@ public sealed class DefenderService(IHttpClientFactory httpClientFactory, IToken
         var content = await response.Content.ReadAsStringAsync();
 
         // Ensure success
-        _guard.EnsureSuccess(response, SystemNames.DefenderTag, url, content);
+        _guard.EnsureSuccess(response, SystemNames.DefenderTag, url, content, audit);
     }
 
     #endregion

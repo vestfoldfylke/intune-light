@@ -491,3 +491,7 @@ $RECYCLE.BIN/
 
 # Node dependencies
 node_modules/
+
+# Claude Code local settings (personal, not shared)
+.claude/settings.local.json
+CLAUDE.local.md
