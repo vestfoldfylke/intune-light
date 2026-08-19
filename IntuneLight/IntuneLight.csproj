@@ -21,8 +21,8 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Microsoft.Identity.Client" Version="4.85.1" />
-		<PackageReference Include="MudBlazor" Version="9.5.0" />
+		<PackageReference Include="Microsoft.Identity.Client" Version="4.87.0" />
+		<PackageReference Include="MudBlazor" Version="9.8.0" />
 		<PackageReference Include="QRCoder" Version="1.8.0" />
 		<PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
 		<PackageReference Include="Serilog.Enrichers.Environment" Version="3.0.1" />
@@ -30,7 +30,7 @@
 		<PackageReference Include="Serilog.Settings.Configuration" Version="10.0.1" />
 		<PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
 		<PackageReference Include="Vestfold.Extensions.Logging" Version="3.4.1" />
-		<PackageReference Include="HtmlSanitizer" Version="9.0.892" />
+		<PackageReference Include="HtmlSanitizer" Version="9.2.995" />
 		<PackageReference Include="Vestfold.Extensions.Metrics" Version="1.0.2" />
 	</ItemGroup>
 
