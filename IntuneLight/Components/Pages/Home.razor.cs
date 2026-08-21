@@ -37,6 +37,10 @@ public partial class Home : ComponentBase
 
         var deviceId = _state.ManagedDevice.AzureADDeviceId;
 
+        // Capture actor/IP/correlation id once, before the awaited call chain starts, since
+        // ambient HttpContext resolution in ApiResponseGuard is not reliable past this point.
+        var attribution = _apiResponseGuard.CaptureAttribution();
+
         await _uiErrorHandler.RunSafeAsync(
             async () =>
             {
@@ -50,7 +54,7 @@ public partial class Home : ComponentBase
                 }
 
                 // Delete the device from Entra ID using the Azure AD device ID.
-                await _entraDirectoryService.DeleteDeviceByAzureAdDeviceIdAsync(deviceId, _state.BuildAuditContext());
+                await _entraDirectoryService.DeleteDeviceByAzureAdDeviceIdAsync(deviceId, _state.BuildAuditContext(attribution));
 
                 _snackbar.Add("Enheten ble slettet.", Severity.Success);
 
@@ -99,9 +103,11 @@ public partial class Home : ComponentBase
             return;
         }
 
+        var attribution = _apiResponseGuard.CaptureAttribution();
+
         await _uiErrorHandler.RunSafeAsync(async () =>
         {
-            await _intuneService.WipeManagedDeviceAsync(_state.ManagedDevice.Id, _state.BuildAuditContext());
+            await _intuneService.WipeManagedDeviceAsync(_state.ManagedDevice.Id, _state.BuildAuditContext(attribution));
             _snackbar.Add("Wipe-kommando er sendt til enheten.", Severity.Success);
         });
     }
@@ -114,9 +120,11 @@ public partial class Home : ComponentBase
             return;
         }
 
+        var attribution = _apiResponseGuard.CaptureAttribution();
+
         await _uiErrorHandler.RunSafeAsync(async () =>
         {
-            await _intuneService.RequestRemoteAssistanceAsync(_state.ManagedDevice.Id, _state.BuildAuditContext());
+            await _intuneService.RequestRemoteAssistanceAsync(_state.ManagedDevice.Id, _state.BuildAuditContext(attribution));
             _snackbar.Add("Fjernhjelp-forespørsel er sendt.", Severity.Success);
         });
     }
@@ -140,9 +148,11 @@ public partial class Home : ComponentBase
             return;
         }
 
+        var attribution = _apiResponseGuard.CaptureAttribution();
+
         await _uiErrorHandler.RunSafeAsync(async () =>
         {
-            await _intuneService.DeleteManagedDeviceAsync(_state.ManagedDevice.Id, _state.BuildAuditContext());
+            await _intuneService.DeleteManagedDeviceAsync(_state.ManagedDevice.Id, _state.BuildAuditContext(attribution));
 
             _snackbar.Add("Enheten ble slettet fra Intune.", Severity.Success);
             _state.ManagedDevice = null;
@@ -162,9 +172,11 @@ public partial class Home : ComponentBase
             return;
         }
 
+        var attribution = _apiResponseGuard.CaptureAttribution();
+
         await _uiErrorHandler.RunSafeAsync(async () =>
         {
-            var result = await _defenderService.RunAntiVirusScanAsync(_state.DefenderDevice.Id, scanType, _state.BuildAuditContext());
+            var result = await _defenderService.RunAntiVirusScanAsync(_state.DefenderDevice.Id, scanType, _state.BuildAuditContext(attribution));
 
             if (result == DefenderScanResult.Started)
             {
@@ -202,9 +214,11 @@ public partial class Home : ComponentBase
             return;
         }
 
+        var attribution = _apiResponseGuard.CaptureAttribution();
+
         await _uiErrorHandler.RunSafeAsync(async () =>
         {
-            await _intuneService.DeleteAutopilotDeviceAsync(_state.AutopilotDevice.Id, _state.BuildAuditContext());
+            await _intuneService.DeleteAutopilotDeviceAsync(_state.AutopilotDevice.Id, _state.BuildAuditContext(attribution));
 
             _snackbar.Add("Autopilot-oppføringen ble slettet.", Severity.Success);
             _state.AutopilotDevice = null;
@@ -279,9 +293,11 @@ public partial class Home : ComponentBase
             return;
         }
 
+        var attribution = _apiResponseGuard.CaptureAttribution();
+
         await _uiErrorHandler.RunSafeAsync(async () =>
         {
-            await _intuneService.RotateLocalAdminPasswordAsync(_state.ManagedDevice.Id, _state.BuildAuditContext());
+            await _intuneService.RotateLocalAdminPasswordAsync(_state.ManagedDevice.Id, _state.BuildAuditContext(attribution));
 
             // Allow only one rotation at a time per device.
             _state.LapsRotationLockedDevices.Add(_state.ManagedDevice.Id);
@@ -305,6 +321,10 @@ public partial class Home : ComponentBase
 
         // Set loading target for spinner
         _loadingTarget = target;
+
+        // Capture actor/IP/correlation id once, before the awaited call chain starts, since
+        // ambient HttpContext resolution in ApiResponseGuard is not reliable past this point.
+        var attribution = _apiResponseGuard.CaptureAttribution();
 
         try
         {
@@ -353,11 +373,11 @@ public partial class Home : ComponentBase
                         break;
 
                     case RefreshTarget.Laps:
-                        _state.DeviceCredential = await _intuneService.GetLapsPasswordByAzureDeviceId(_state.ManagedDevice.AzureADDeviceId, _state.BuildAuditContext());
+                        _state.DeviceCredential = await _intuneService.GetLapsPasswordByAzureDeviceId(_state.ManagedDevice.AzureADDeviceId, _state.BuildAuditContext(attribution));
                         break;
 
                     case RefreshTarget.BitLocker:
-                        _state.BitlockerRecoveryKey = await _intuneService.GetBitlockerRecoveryKeyByAzureAdDeviceIdAsync(_state.ManagedDevice.AzureADDeviceId, _state.BuildAuditContext());
+                        _state.BitlockerRecoveryKey = await _intuneService.GetBitlockerRecoveryKeyByAzureAdDeviceIdAsync(_state.ManagedDevice.AzureADDeviceId, _state.BuildAuditContext(attribution));
                         break;
 
                     case RefreshTarget.IseSession:
